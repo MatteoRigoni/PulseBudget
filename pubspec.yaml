@@ -1,0 +1,26 @@
+name: bilancio_me
+description: BilancioMe - Personal finance manager
+version: 1.0.0
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.4.0
+  cloud_firestore: ^4.13.0
+  firebase_core: ^2.24.0
+  flutter_animate: ^4.2.0
+  flex_color_picker: ^3.4.0
+  fluentui_system_icons: ^1.1.0
+  intl: ^0.18.0
+  collection: ^1.17.0
+  rxdart: ^0.27.0
+  fl_chart: ^0.65.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/creditCard.jpg 

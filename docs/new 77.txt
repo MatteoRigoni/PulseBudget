@@ -1,0 +1,155 @@
+# MODULO 1 – HomeScreen UI con dati mock
+
+1️⃣  Crea HomeScreen:
+• AppBar translucido con PeriodSelector (solo testo “Mese corrente” per ora).  
+• BalanceCard vetrosa (180 dp) al centro:
+    – caption “Saldo del periodo”
+    – valore mock € 0,00
+    – gradiente neutro grigio
+    – onTap: toast “Analysis non ancora implementato”
+• Riga sotto: “+ Entrate €0 • – Uscite €0”.
+• Due Extended FAB centrati in basso:
+    – “− Uscita” rosso
+    – “＋ Entrata” verde
+    – onPressed: toast “Sheet non ancora implementata”.
+
+2️⃣  Crea helper `gradientByBalance(double)` che restituisce 3 gradienti (positivo, zero, negativo).
+
+👉  Mostra diff e attendi conferma.
+
+
+# MODULO 2 – Sheet nuova transazione (state in-memory)
+
+📄  Crea classe `Transaction` completa e `PaymentType` enum (se non esiste).
+
+🗄️  Provider Riverpod
+`transactionsProvider` → `StateNotifierProvider` con lista in-memory.
+
+🆕  NewTransactionSheet
+• Bottom-sheet 90 % altezza.
+• Campi: amount (€ double, tastierino), date (DatePicker), description, paymentType (pill selector 4 scelte), category (dropdown placeholder).
+• Bottoni Annulla / Salva.
+• On Salva:
+    – costruisci `Transaction`
+    – aggiungi a `transactionsProvider`
+    – Navigator.pop()
+    – triggera animazione saldo (scale 0.95→1.0).
+
+🏠  HomeScreen:
+• Leggi lista transazioni dal provider.
+• Calcola entrate/uscite/saldo e aggiorna UI + gradiente.
+
+👉  Mostra diff, attesa conferma.
+
+
+# MODULO 3 – Persistere su Firebase
+
+1️⃣  Configura Firebase (Spark) e inizializza in main().
+2️⃣  Creare `TransactionRepository` astratta + implementazione `FirestoreTransactionRepository`.
+   • Campo aggiuntivo `descriptionLowercase`.
+   • CRUD base (add, watchByPeriod).
+   • Indicizzazione: indicami l’index Firestore su `description_lowercase`.
+
+3️⃣  Modifica `transactionsProvider` per usare il repository Firestore (StreamProvider).
+
+4️⃣  NewTransactionSheet: salva su Firestore, non più in-memory.
+
+👉  Diff, conferma a mano prima di applicare.
+
+# MODULO 4 – Schermata Movimenti + search
+
+📄  MovementsScreen
+• AppBar translucido con SearchBar “Cerca movimenti…”.
+• Debounce 300 ms (RxDart) su query.
+• Query Firestore like:
+  where('description_lowercase', isGreaterThanOrEqualTo: q)
+  .where('description_lowercase', isLessThanOrEqualTo: q + '\uf8ff')
+• ListView TransactionCard:
+    – icona categoria
+    – descrizione (evidenzia match)
+    – importo ± colorato
+    – data
+    – chip PaymentType
+• Ordina: amount desc poi date desc.
+• Empty-state grafica se lista vuota.
+
+👉  Diff + attesa conferma.
+
+# MODULO 5 – AnalysisSheet e CategoryDetail
+
+1️⃣  AnalysisSheet (showModalBottomSheet dal saldo)
+   – Stream transazioni periodo
+   – Raggruppa per categoria e ordina importo desc
+   – ListTile icona-categoria / nome / importo ±
+   – onTap → CategoryDetailPage
+
+2️⃣  CategoryDetailPage
+   – Pie-chart fl_chart
+   – ListView transazioni della categoria
+   – Pulsanti modifica/elimina (solo UI stub)
+
+👉  Diff, attendi conferma.
+
+# MODULO 6 – Ricorrenti
+
+• Modello `RecurringRule` completo (Importo, CategoryId, PaymentType, RRule).
+• `RecurringRuleRepository` Firestore.
+• RecurringRulesPage: lista card + FAB “＋”.
+• NewRecurringRuleSheet con picker frequenza (mensile default).
+• Scheduler: quando salvi, genera transazioni future (no retroattivo).
+
+👉  Diff + conferma.
+
+# MODULO 7 – Categories CRUD
+
+• Category model completo (id, name, iconCodePoint, colorHex, type income|expense).
+• CategoryRepository Firestore, stream categories.
+• CategoriesPage: Grid CategoryCard + FAB “＋ Categoria”.
+• NewCategorySheet: IconPicker (fluentui_system_icons), ColorPicker (flex_color_picker), TextField name.
+• Rifai dropdown categoria in NewTransactionSheet usando stream categorie.
+
+👉  Diff, conferma.
+
+# MODULO 8 – Test
+
+1️⃣  Unit-test
+   – TransactionRepository.searchMovements: verifica like-search.
+   – CategoryRepository CRUD.
+
+2️⃣  Widget-test
+   – HomeScreen: gradiente corretto per saldo +/0/−.
+   – MovementsScreen: digita “tagliando” → verifica filtro.
+
+Usa Firestore finto (cloud_firestore_mocks).
+
+👉  Diff, attesa conferma.
+
+# MODULO 9 – Import da CSV / PDF con Hard-replace
+
+1️⃣  Dipendenze
+  file_picker:^6.0.0
+  csv:^6.0.0
+  pdf_text:^3.0.0  # solo se vuoi PDF subito
+
+2️⃣  Model
+  enum ImportSource { csv, pdf, manual }
+
+  Estendi Transaction con campo `importSource`.
+
+3️⃣  UI
+  • Overflow menu in HomeScreen: voce “Importa estratto…”.
+  • Dialog conferma: “Sostituire tutte le transazioni di <mese/anno> con quelle importate?”
+
+4️⃣  Flow
+  a. FilePicker: accetta .csv e .pdf  
+  b. ParserCsvService → List<ImportedTx>  
+     (se PDF, usa PdfParserService → CSV-like list)  
+  c. Mappa in Transaction (importSource = csv/pdf)  
+  d. Repo: `deleteByMonth(year, month)` poi `batchInsert(list)`  
+  e. Aggiorna providers, animazione saldo.
+
+5️⃣  Test
+  • Unit-test CsvParserService con fixture CSV.  
+  • Widget-test UI conferma + snackbar.
+
+👉  Mostra diff, attendi conferma.
