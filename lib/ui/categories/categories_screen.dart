@@ -56,28 +56,51 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
           ),
           // Grid delle categorie
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(14),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.6,
-              ),
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
               itemCount: filteredCategories.length,
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, thickness: 0.5),
               itemBuilder: (context, index) {
                 final category = filteredCategories[index];
-                return _CategoryCard(
-                  category: category,
+                final color =
+                    Color(int.parse(category.colorHex.replaceAll('#', '0xFF')));
+                return ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.13),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      IconData(category.iconCodePoint,
+                          fontFamily: 'MaterialIcons'),
+                      color: color,
+                      size: 22,
+                    ),
+                  ),
+                  title: Text(
+                    category.name,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                  ),
+                  trailing: IconButton(
+                    onPressed: () => _showDeleteDialog(category),
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    color: Colors.red.withOpacity(0.85),
+                    splashRadius: 20,
+                  ),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text(
                               'Modifica categoria non ancora implementata')),
                     );
-                  },
-                  onDelete: () {
-                    _showDeleteDialog(category);
                   },
                 );
               },
@@ -160,34 +183,40 @@ class _CategoryCard extends StatelessWidget {
           child: Stack(
             children: [
               Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.13),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      IconData(category.iconCodePoint,
-                          fontFamily: 'MaterialIcons'),
-                      color: color,
-                      size: 30,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 6, bottom: 2),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.13),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        IconData(category.iconCodePoint,
+                            fontFamily: 'MaterialIcons'),
+                        color: color,
+                        size: 22,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    category.name,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8, bottom: 6),
+                      child: Text(
+                        category.name,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        textAlign: TextAlign.left,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
