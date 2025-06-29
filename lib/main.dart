@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ui/home/home_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() {
-  runApp(const PulseBudgetApp());
+  runApp(const ProviderScope(child: PulseBudgetApp()));
 }
 
 class PulseBudgetApp extends StatelessWidget {
@@ -19,4 +20,4 @@ class PulseBudgetApp extends StatelessWidget {
       home: const HomeScreen(),
     );
   }
-} 
+}

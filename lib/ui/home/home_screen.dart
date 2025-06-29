@@ -1,22 +1,85 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/transactions_provider.dart';
+import '../movements/new_transaction_sheet.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with SingleTickerProviderStateMixin {
   String _period = 'Mese';
   int _selectedMonth = 0;
   int _selectedYear = DateTime.now().year;
+
+  late AnimationController _balanceAnimController;
+  late Animation<double> _balanceScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _balanceAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      lowerBound: 0.95,
+      upperBound: 1.0,
+    );
+    _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
+    _balanceAnimController.value = 1.0;
+  }
+
+  @override
+  void dispose() {
+    _balanceAnimController.dispose();
+    super.dispose();
+  }
+
+  void _showNewTransactionSheet(bool isIncome) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NewTransactionSheet(
+        isIncome: isIncome,
+        onSaved: () {
+          _balanceAnimController.forward(from: 0.95);
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final now = DateTime.now();
+    final transactions = ref.watch(transactionsProvider);
+    final filtered = transactions.where((t) {
+      if (_period == 'Mese') {
+        return t.date.month == _selectedMonth + 1 &&
+            t.date.year == _selectedYear;
+      } else {
+        return t.date.year == _selectedYear;
+      }
+    }).toList();
+    final entrate = filtered
+        .where((t) => t.amount > 0)
+        .fold<double>(0, (s, t) => s + t.amount);
+    final uscite = filtered
+        .where((t) => t.amount < 0)
+        .fold<double>(0, (s, t) => s + t.amount);
+    final saldo = entrate + uscite;
+
+    Color byBalance(double value) {
+      if (value > 0) return Colors.greenAccent;
+      if (value < 0) return Colors.redAccent;
+      return Colors.white;
+    }
+
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -117,98 +180,121 @@ class _HomeScreenState extends State<HomeScreen> {
                         content: Text('Analysis non ancora implementato')),
                   );
                 },
-                child: Container(
-                  height: 200,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Colors.black, Color(0xFF222222)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                child: ScaleTransition(
+                  scale: _balanceScale,
+                  child: Container(
+                    height: 200,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        colors: saldo > 0
+                            ? [Colors.green.shade900, Colors.green.shade400]
+                            : saldo < 0
+                                ? [Colors.red.shade900, Colors.red.shade400]
+                                : [Colors.black, Color(0xFF222222)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(child: Container()),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text('Saldo',
-                                  style: theme.textTheme.labelLarge
-                                      ?.copyWith(color: Colors.white70)),
-                              Text(
-                                '€ 0,00',
-                                style: theme.textTheme.displayMedium
-                                    ?.copyWith(color: byBalance(0)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            // Chip giallo stile carta di credito, più in alto e più tenue
+                            Container(
+                              width: 38,
+                              height: 28,
+                              margin: const EdgeInsets.only(bottom: 20, top: 0),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: Colors.amber.shade400, width: 2),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Entrate
-                          Row(
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add,
-                                      color: Colors.white, size: 28),
-                                ],
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: Icon(Icons.credit_card,
+                                    color: Colors.amber.shade800, size: 18),
                               ),
-                              const SizedBox(width: 8),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('Entrate',
-                                      style: theme.textTheme.labelLarge
-                                          ?.copyWith(color: Colors.white)),
-                                  const SizedBox(height: 2),
-                                  Text('€ 0,00',
-                                      style: theme.textTheme.bodyLarge
-                                          ?.copyWith(color: Colors.white)),
-                                ],
-                              ),
-                            ],
-                          ),
-                          // Uscite
-                          Row(
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.remove,
-                                      color: Colors.white, size: 28),
-                                ],
-                              ),
-                              const SizedBox(width: 8),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('Uscite',
-                                      style: theme.textTheme.labelLarge
-                                          ?.copyWith(color: Colors.white)),
-                                  const SizedBox(height: 2),
-                                  Text('€ 0,00',
-                                      style: theme.textTheme.bodyLarge
-                                          ?.copyWith(color: Colors.white)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                            ),
+                            const Spacer(),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('Saldo',
+                                    style: theme.textTheme.labelLarge
+                                        ?.copyWith(color: Colors.white70)),
+                                Text(
+                                  '€ ${saldo.toStringAsFixed(2)}',
+                                  style: theme.textTheme.displayMedium
+                                      ?.copyWith(color: byBalance(saldo)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Entrate
+                            Row(
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add,
+                                        color: Colors.white, size: 28),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('Entrate',
+                                        style: theme.textTheme.labelLarge
+                                            ?.copyWith(color: Colors.white)),
+                                    const SizedBox(height: 2),
+                                    Text('€ ${entrate.toStringAsFixed(2)}',
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(color: Colors.white)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            // Uscite
+                            Row(
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.remove,
+                                        color: Colors.white, size: 28),
+                                  ],
+                                ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text('Uscite',
+                                        style: theme.textTheme.labelLarge
+                                            ?.copyWith(color: Colors.white)),
+                                    const SizedBox(height: 2),
+                                    Text('€ ${uscite.abs().toStringAsFixed(2)}',
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(color: Colors.white)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -233,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Icon(Icons.upload, size: 20),
                     SizedBox(width: 8),
-                    Text('Carica dati Carta'),
+                    Text('Carica dati da Estratto conto'),
                   ],
                 ),
               ),
@@ -255,17 +341,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 72,
                 child: FloatingActionButton(
                   heroTag: "entrata",
-                  backgroundColor: Colors.greenAccent.shade200,
+                  backgroundColor: Color(0xFF00C853),
                   foregroundColor: Colors.white,
                   elevation: 12,
                   shape: const CircleBorder(),
-                  child: const Icon(Icons.add, size: 44, weight: 800),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Sheet non ancora implementata')),
-                    );
-                  },
+                  onPressed: () => _showNewTransactionSheet(true),
+                  child: const Icon(Icons.add,
+                      size: 44, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -280,17 +362,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 72,
                 child: FloatingActionButton(
                   heroTag: "uscita",
-                  backgroundColor: Colors.redAccent.shade100,
+                  backgroundColor: Color(0xFFD50000),
                   foregroundColor: Colors.white,
                   elevation: 12,
                   shape: const CircleBorder(),
-                  child: const Icon(Icons.remove, size: 44, weight: 800),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Sheet non ancora implementata')),
-                    );
-                  },
+                  onPressed: () => _showNewTransactionSheet(false),
+                  child: const Icon(Icons.remove,
+                      size: 44, color: Colors.white, weight: 800),
                 ),
               ),
             ),
