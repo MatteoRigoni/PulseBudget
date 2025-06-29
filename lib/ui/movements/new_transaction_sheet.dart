@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../model/transaction.dart';
 import '../../model/payment_type.dart';
 import '../../providers/transactions_provider.dart';
+import '../../providers/categories_provider.dart';
 import '../../model/category.dart';
 import 'package:collection/collection.dart';
 
@@ -35,31 +36,6 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
 
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
-
-  // Mock categories (in futuro da database)
-  final List<Category> mockCategories = [
-    Category(
-      id: '1',
-      name: 'Spesa',
-      iconCodePoint: Icons.shopping_cart.codePoint,
-      colorHex: '#FF7043',
-      type: 'expense',
-    ),
-    Category(
-      id: '2',
-      name: 'Stipendio',
-      iconCodePoint: Icons.attach_money.codePoint,
-      colorHex: '#66BB6A',
-      type: 'income',
-    ),
-    Category(
-      id: '3',
-      name: 'Svago',
-      iconCodePoint: Icons.sports_esports.codePoint,
-      colorHex: '#42A5F5',
-      type: 'expense',
-    ),
-  ];
 
   @override
   void initState() {
@@ -136,7 +112,9 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
       decimalDigits: 2,
     );
 
-    final filteredCategories = mockCategories
+    // Ottieni le categorie dal provider
+    final allCategories = ref.watch(categoriesProvider);
+    final filteredCategories = allCategories
         .where((cat) =>
             widget.isIncome ? cat.type == 'income' : cat.type == 'expense')
         .toList();

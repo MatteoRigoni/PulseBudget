@@ -71,5 +71,55 @@
 👉  Diff, conferma.
 
 ────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────
 📊 MODULO 5 – AnalysisSheet & CategoryDetail (locale)
-──────────────────────────────────────
+────────────────────────────────────────────────────────
+• AnalysisSheet: aggrega transactionsProvider per categoria nel periodo, ordina desc.
+• CategoryDetailPage: pie-chart (fl_chart) + lista transazioni, bottoni edit/del (stub).
+👉  Diff, conferma.
+
+────────────────────────────────────────────────────────
+🔍 MODULO 6 – Movimenti + search (locale)
+────────────────────────────────────────────────────────
+• MovementsScreen:
+    AppBar SearchBar “Cerca movimenti…”.
+    Debounce 300 ms (RxDart).
+    Filtra transactionsProvider by description.contains(query.lower()).
+    ListView TransactionCard (icona, descrizione highlight, amount ±, data, chip PaymentType).
+    Ordine: amount desc poi date desc.
+    Empty-state se lista vuota.
+👉  Diff, conferma.
+
+────────────────────────────────────────────────────────
+📥 MODULO 7 – Import CSV/PDF (replace mirato, locale)
+────────────────────────────────────────────────────────
+• Overflow menu “Importa estratto…”.
+• Dialog 1: scegli paymentType (Bancomat | Carta).
+• FilePicker .csv/.pdf.
+• Parser → List<ImportedTx>.
+• Sostituisci SOLO le uscite del mese con quel paymentType:
+      newState = old.where(notSameMonthOrType) + importedList;
+• SnackBar “Import completato: n movimenti”.
+👉  Diff, conferma.
+
+────────────────────────────────────────────────────────
+🧪 MODULO 8 – Test (locale)
+────────────────────────────────────────────────────────
+• Unit-test: gradientByBalance(), CsvParser, filtro search.
+• Widget-test: 
+    – Home gradiente per +/0/–
+    – Movements search “tagliando”.
+👉  Diff, conferma.
+
+────────────────────────────────────────────────────────
+☁️ MODULO 9 – Persistenza Firebase (fase finale)
+────────────────────────────────────────────────────────
+1. Aggiungi firebase_core & cloud_firestore; Spark setup; init in main().
+2. Repository astratti + Firestore implementation:
+      TransactionRepository, CategoryRepository, RecurringRuleRepository.
+3. Migra providers a StreamProvider (watchByPeriod, watchAll…).
+4. NewTransactionSheet / Import / Ricorrenti ora usano repo.add / batch.
+5. Crea indice su `description_lowercase` per like-search.
+6. Aggiorna MovementsScreen a query Firestore.
+7. Test con cloud_firestore_mocks.
+👉  Diff, attendi conferma prima di applicare.

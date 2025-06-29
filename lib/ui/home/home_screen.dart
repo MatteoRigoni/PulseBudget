@@ -83,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Pulse Budget'),
+        title: const Text('BilancioMe'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -205,7 +205,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             // Chip giallo stile carta di credito, più in alto e più tenue
                             Container(
                               width: 38,
-                              height: 28,
+                              height: 32,
                               margin: const EdgeInsets.only(bottom: 20, top: 0),
                               decoration: BoxDecoration(
                                 color: Colors.amber.shade200,
@@ -216,7 +216,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               child: Align(
                                 alignment: Alignment.center,
                                 child: Icon(Icons.credit_card,
-                                    color: Colors.amber.shade800, size: 18),
+                                    color: Colors.amber.shade800, size: 20),
                               ),
                             ),
                             const Spacer(),
@@ -335,13 +335,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Align(
             alignment: Alignment.bottomLeft,
             child: Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 120),
+              padding: const EdgeInsets.only(left: 16, bottom: 80),
               child: SizedBox(
                 width: 72,
                 height: 72,
                 child: FloatingActionButton(
                   heroTag: "entrata",
-                  backgroundColor: Color(0xFF00C853),
+                  backgroundColor: Color(0xFF40C4FF),
                   foregroundColor: Colors.white,
                   elevation: 12,
                   shape: const CircleBorder(),
@@ -356,13 +356,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16, bottom: 120),
+              padding: const EdgeInsets.only(right: 16, bottom: 80),
               child: SizedBox(
                 width: 72,
                 height: 72,
                 child: FloatingActionButton(
                   heroTag: "uscita",
-                  backgroundColor: Color(0xFFD50000),
+                  backgroundColor: Color(0xFF424242),
                   foregroundColor: Colors.white,
                   elevation: 12,
                   shape: const CircleBorder(),
@@ -376,39 +376,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0,
-        onDestinationSelected: (int index) {
-          // Qui puoi aggiungere la logica di navigazione
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
-            selectedIcon: Icon(Icons.list_alt),
-            label: 'Movimenti',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Report',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.repeat_outlined),
-            selectedIcon: Icon(Icons.repeat),
-            label: 'Ricorrenti',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.category_outlined),
-            selectedIcon: Icon(Icons.category),
-            label: 'Categorie',
-          ),
-        ],
-      ),
     );
   }
 }
