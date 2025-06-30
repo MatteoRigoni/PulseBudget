@@ -120,7 +120,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
         .toList();
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
+      height: MediaQuery.of(context).size.height * 0.6,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

@@ -4,6 +4,12 @@ import '../../theme/app_theme.dart';
 import '../../providers/transactions_provider.dart';
 import '../movements/new_transaction_sheet.dart';
 import '../../providers/recurring_bootstrap_provider.dart';
+import '../movements/movements_screen.dart';
+import '../../model/transaction.dart';
+import '../../model/category.dart';
+import '../../providers/categories_provider.dart';
+import '../report/analysis_sheet.dart';
+import '../categories/categories_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -87,9 +93,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         centerTitle: true,
         title: const Text('BilancioMe'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {},
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.menu),
+            onSelected: (value) {
+              if (value == 'import') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Import non ancora implementato')),
+                );
+              } else if (value == 'categories') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'import',
+                child: Row(
+                  children: [
+                    Icon(Icons.upload, size: 20),
+                    SizedBox(width: 8),
+                    Text('Carica dati da Estratto conto'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'categories',
+                child: Row(
+                  children: [
+                    Icon(Icons.category, size: 20),
+                    SizedBox(width: 8),
+                    Text('Categorie'),
+                  ],
+                ),
+              ),
+              // Altre voci di menu qui
+            ],
           ),
         ],
       ),
@@ -171,7 +211,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
             ),
             const SizedBox(height: 16),
-            SizedBox(height: 32),
             // BalanceCard
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -204,21 +243,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       children: [
                         Row(
                           children: [
-                            // Chip giallo stile carta di credito, più in alto e più tenue
+                            // Chip con solo immagine assets
                             Container(
                               width: 38,
                               height: 32,
                               margin: const EdgeInsets.only(bottom: 20, top: 0),
                               decoration: BoxDecoration(
-                                color: Colors.amber.shade200,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                    color: Colors.amber.shade400, width: 2),
                               ),
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: Icon(Icons.credit_card,
-                                    color: Colors.amber.shade800, size: 20),
+                              clipBehavior: Clip.none,
+                              child: Image.asset(
+                                'assets/chip.jpg',
+                                fit: BoxFit.cover,
                               ),
                             ),
                             const Spacer(),
@@ -301,32 +337,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            // UploadButton
-            Center(
-              child: FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.tertiaryContainer,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Import non ancora implementato')),
-                  );
-                },
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.upload, size: 20),
-                    SizedBox(width: 8),
-                    Text('Carica dati da Estratto conto'),
-                  ],
-                ),
+            const SizedBox(height: 8),
+            // ExpansionTile per categorie peggiori
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: _MainCategoriesPanel(
+                period: _period,
+                selectedMonth: _selectedMonth,
+                selectedYear: _selectedYear,
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -337,10 +358,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Align(
             alignment: Alignment.bottomLeft,
             child: Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 80),
+              padding: const EdgeInsets.only(left: 16, bottom: 32),
               child: SizedBox(
-                width: 72,
-                height: 72,
+                width: 58,
+                height: 58,
                 child: FloatingActionButton(
                   heroTag: "entrata",
                   backgroundColor: Color(0xFF40C4FF),
@@ -349,7 +370,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   shape: const CircleBorder(),
                   onPressed: () => _showNewTransactionSheet(true),
                   child: const Icon(Icons.add,
-                      size: 44, color: Colors.white, weight: 800),
+                      size: 36, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -358,10 +379,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16, bottom: 80),
+              padding: const EdgeInsets.only(right: 16, bottom: 32),
               child: SizedBox(
-                width: 72,
-                height: 72,
+                width: 58,
+                height: 58,
                 child: FloatingActionButton(
                   heroTag: "uscita",
                   backgroundColor: Color(0xFF424242),
@@ -370,7 +391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   shape: const CircleBorder(),
                   onPressed: () => _showNewTransactionSheet(false),
                   child: const Icon(Icons.remove,
-                      size: 44, color: Colors.white, weight: 800),
+                      size: 36, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -378,6 +399,131 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+}
+
+class _MainCategoriesPanel extends ConsumerStatefulWidget {
+  final String period;
+  final int selectedMonth;
+  final int selectedYear;
+  const _MainCategoriesPanel(
+      {required this.period,
+      required this.selectedMonth,
+      required this.selectedYear,
+      Key? key})
+      : super(key: key);
+
+  @override
+  ConsumerState<_MainCategoriesPanel> createState() =>
+      _MainCategoriesPanelState();
+}
+
+class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
+  bool showExpenses = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = ref.watch(categoriesProvider);
+    final transactions = ref.watch(transactionsProvider);
+    List<Transaction> filtered = transactions;
+    if (widget.period == 'Mese') {
+      filtered = transactions
+          .where((t) =>
+              t.date.month == widget.selectedMonth + 1 &&
+              t.date.year == widget.selectedYear)
+          .toList();
+    } else {
+      filtered = transactions
+          .where((t) => t.date.year == widget.selectedYear)
+          .toList();
+    }
+    // Filtra per tipo
+    final filteredCategories = categories
+        .where((c) => c.type == (showExpenses ? 'expense' : 'income'))
+        .toList();
+    // Aggrega per categoria
+    final Map<String, double> totals = {};
+    for (final t in filtered) {
+      if ((showExpenses && t.amount < 0) || (!showExpenses && t.amount > 0)) {
+        totals[t.categoryId] = (totals[t.categoryId] ?? 0) + t.amount;
+      }
+    }
+    final List<MapEntry<Category, double>> sorted = [
+      for (final c in filteredCategories)
+        if (totals.containsKey(c.id)) MapEntry(c, totals[c.id]!)
+    ]..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(top: 0, bottom: 0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(showExpenses ? Icons.trending_down : Icons.trending_up,
+                    color: showExpenses ? Colors.red : Colors.green),
+                const SizedBox(width: 8),
+                Text(showExpenses ? 'Spese principali' : 'Incassi principali',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                      showExpenses
+                          ? Icons.arrow_circle_up
+                          : Icons.arrow_circle_down,
+                      color: Theme.of(context).colorScheme.primary),
+                  tooltip: showExpenses ? 'Mostra incassi' : 'Mostra spese',
+                  onPressed: () => setState(() => showExpenses = !showExpenses),
+                ),
+              ],
+            ),
+            if (sorted.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child:
+                    Text('Nessun dato significativo nel periodo selezionato.'),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: sorted.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, thickness: 0.5),
+                itemBuilder: (context, idx) {
+                  final entry = sorted[idx];
+                  return SizedBox(
+                    height: 38,
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 0),
+                      leading: Icon(entry.key.icon,
+                          color: entry.key.color, size: 22),
+                      title: Text(entry.key.name,
+                          style: const TextStyle(fontSize: 15)),
+                      trailing: Text(
+                        (entry.value < 0 ? '-' : '+') +
+                            entry.value.abs().toStringAsFixed(2) +
+                            ' €',
+                        style: TextStyle(
+                          color: entry.value < 0 ? Colors.red : Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

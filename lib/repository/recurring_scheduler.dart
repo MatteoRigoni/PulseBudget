@@ -11,49 +11,32 @@ List<Transaction> generateDueRecurringTransactions({
   required List<Transaction> existingTransactions,
   required DateTime now,
 }) {
+  print('[DEBUG] generateDueRecurringTransactions called at: '
+      'now: \\${now.toIso8601String()}\\n'
+      'rules: \\${rules.length}\\n'
+      'existingTransactions: \\${existingTransactions.length}');
+
   final List<Transaction> result = [];
-  final int year = now.year;
-  final int month = now.month;
-  final int day = now.day;
-  final int weekday = now.weekday; // 1 = lunedì
+  final DateTime twoMonthsAgo = DateTime(now.year, now.month - 2, 1);
 
   for (final rule in rules) {
-    if (rule.rrule.startsWith('FREQ=MONTHLY')) {
-      // Solo il 1 del mese
-      if (day == 1) {
-        final dueDate = DateTime(year, month, 1);
-        final transactionId = '${rule.id}_${year}_${month}';
-        final alreadyExists =
-            existingTransactions.any((t) => t.id == transactionId);
-        if (!alreadyExists) {
-          result.add(_buildTransaction(rule, dueDate, transactionId,
-              '[Ricorrente] ${dueDate.month}/${dueDate.year}'));
-        }
+    // Calcola la data di partenza: max(startDate, due mesi fa)
+    DateTime start =
+        rule.startDate.isAfter(twoMonthsAgo) ? rule.startDate : twoMonthsAgo;
+    DateTime? current = _firstOccurrenceOnOrAfter(rule, start);
+    while (current != null && !current.isAfter(now)) {
+      String transactionId = _transactionIdForRule(rule, current);
+      final alreadyExists =
+          existingTransactions.any((t) => t.id == transactionId);
+      if (!alreadyExists) {
+        result.add(_buildTransaction(
+          rule,
+          current,
+          transactionId,
+          '[Ricorrente] ${_descriptionForOccurrence(rule, current)}',
+        ));
       }
-    } else if (rule.rrule.startsWith('FREQ=WEEKLY')) {
-      // Solo il lunedì
-      if (weekday == DateTime.monday) {
-        final dueDate = DateTime(year, month, day);
-        final transactionId = '${rule.id}_${year}_w${_weekOfYear(now)}';
-        final alreadyExists =
-            existingTransactions.any((t) => t.id == transactionId);
-        if (!alreadyExists) {
-          result.add(_buildTransaction(rule, dueDate, transactionId,
-              '[Ricorrente] Settimana ${_weekOfYear(now)}'));
-        }
-      }
-    } else if (rule.rrule.startsWith('FREQ=YEARLY')) {
-      // Solo il 1 gennaio
-      if (month == 1 && day == 1) {
-        final dueDate = DateTime(year, 1, 1);
-        final transactionId = '${rule.id}_${year}';
-        final alreadyExists =
-            existingTransactions.any((t) => t.id == transactionId);
-        if (!alreadyExists) {
-          result.add(_buildTransaction(
-              rule, dueDate, transactionId, '[Ricorrente] $year'));
-        }
-      }
+      current = _nextOccurrence(rule, current);
     }
   }
   return result;
@@ -89,4 +72,50 @@ int _weekOfYear(DateTime date) {
   }
   final diff = date.difference(firstMonday).inDays;
   return 1 + (diff ~/ 7);
+}
+
+DateTime _firstOccurrenceOnOrAfter(RecurringRule rule, DateTime from) {
+  if (rule.rrule.startsWith('FREQ=MONTHLY')) {
+    return DateTime(from.year, from.month, 1);
+  } else if (rule.rrule.startsWith('FREQ=WEEKLY')) {
+    // Trova il prossimo lunedì
+    int daysToAdd = (DateTime.monday - from.weekday) % 7;
+    return from.add(Duration(days: daysToAdd));
+  } else if (rule.rrule.startsWith('FREQ=YEARLY')) {
+    return DateTime(from.year, 1, 1);
+  }
+  return from;
+}
+
+DateTime? _nextOccurrence(RecurringRule rule, DateTime prev) {
+  if (rule.rrule.startsWith('FREQ=MONTHLY')) {
+    return DateTime(prev.year, prev.month + 1, 1);
+  } else if (rule.rrule.startsWith('FREQ=WEEKLY')) {
+    return prev.add(const Duration(days: 7));
+  } else if (rule.rrule.startsWith('FREQ=YEARLY')) {
+    return DateTime(prev.year + 1, 1, 1);
+  }
+  return null;
+}
+
+String _transactionIdForRule(RecurringRule rule, DateTime date) {
+  if (rule.rrule.startsWith('FREQ=MONTHLY')) {
+    return '${rule.id}_${date.year}_${date.month}';
+  } else if (rule.rrule.startsWith('FREQ=WEEKLY')) {
+    return '${rule.id}_${date.year}_w${_weekOfYear(date)}';
+  } else if (rule.rrule.startsWith('FREQ=YEARLY')) {
+    return '${rule.id}_${date.year}';
+  }
+  return '${rule.id}_${date.toIso8601String()}';
+}
+
+String _descriptionForOccurrence(RecurringRule rule, DateTime date) {
+  if (rule.rrule.startsWith('FREQ=MONTHLY')) {
+    return '${date.month}/${date.year}';
+  } else if (rule.rrule.startsWith('FREQ=WEEKLY')) {
+    return 'Settimana ${_weekOfYear(date)}';
+  } else if (rule.rrule.startsWith('FREQ=YEARLY')) {
+    return '${date.year}';
+  }
+  return '';
 }

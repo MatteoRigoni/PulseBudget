@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ui/home/home_screen.dart';
 import 'ui/categories/categories_screen.dart';
 import 'theme/app_theme.dart';
+import 'ui/recurring/recurring_rules_page.dart';
 
 void main() {
   runApp(const ProviderScope(child: PulseBudgetApp()));
@@ -37,8 +38,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     const HomeScreen(),
     const PlaceholderScreen(title: 'Movimenti'),
     const PlaceholderScreen(title: 'Report'),
-    const PlaceholderScreen(title: 'Ricorrenti'),
-    const CategoriesScreen(),
+    const RecurringRulesPage(),
   ];
 
   @override
@@ -75,11 +75,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.repeat_outlined),
             selectedIcon: Icon(Icons.repeat),
             label: 'Ricorrenti',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.category_outlined),
-            selectedIcon: Icon(Icons.category),
-            label: 'Categorie',
           ),
         ],
       ),

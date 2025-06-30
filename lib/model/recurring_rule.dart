@@ -6,6 +6,7 @@ class RecurringRule {
   final String categoryId;
   final String paymentType;
   final String rrule; // iCalendar RRULE
+  final DateTime startDate;
 
   RecurringRule({
     required this.id,
@@ -13,6 +14,7 @@ class RecurringRule {
     required this.categoryId,
     required this.paymentType,
     required this.rrule,
+    required this.startDate,
   });
 
   RecurringRule copyWith({
@@ -21,6 +23,7 @@ class RecurringRule {
     String? categoryId,
     String? paymentType,
     String? rrule,
+    DateTime? startDate,
   }) {
     return RecurringRule(
       id: id ?? this.id,
@@ -28,6 +31,7 @@ class RecurringRule {
       categoryId: categoryId ?? this.categoryId,
       paymentType: paymentType ?? this.paymentType,
       rrule: rrule ?? this.rrule,
+      startDate: startDate ?? this.startDate,
     );
   }
 
@@ -40,7 +44,8 @@ class RecurringRule {
           amount == other.amount &&
           categoryId == other.categoryId &&
           paymentType == other.paymentType &&
-          rrule == other.rrule;
+          rrule == other.rrule &&
+          startDate == other.startDate;
 
   @override
   int get hashCode =>
@@ -48,5 +53,6 @@ class RecurringRule {
       amount.hashCode ^
       categoryId.hashCode ^
       paymentType.hashCode ^
-      rrule.hashCode;
+      rrule.hashCode ^
+      startDate.hashCode;
 }
