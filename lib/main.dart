@@ -4,6 +4,8 @@ import 'ui/home/home_screen.dart';
 import 'ui/categories/categories_screen.dart';
 import 'theme/app_theme.dart';
 import 'ui/recurring/recurring_rules_page.dart';
+import 'ui/movements/movements_screen.dart';
+import 'ui/report/analysis_sheet.dart';
 
 void main() {
   runApp(const ProviderScope(child: PulseBudgetApp()));
@@ -36,8 +38,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const PlaceholderScreen(title: 'Movimenti'),
-    const PlaceholderScreen(title: 'Report'),
+    const MovementsScreen(),
+    AnalysisSheet(),
     const RecurringRulesPage(),
   ];
 
@@ -49,6 +51,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         children: _screens,
       ),
       bottomNavigationBar: NavigationBar(
+        height: 64,
         selectedIndex: _selectedIndex,
         onDestinationSelected: (int index) {
           setState(() {
@@ -77,41 +80,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             label: 'Ricorrenti',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const PlaceholderScreen({super.key, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.construction,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '$title non ancora implementato',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-          ],
-        ),
       ),
     );
   }

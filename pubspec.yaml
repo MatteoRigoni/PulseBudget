@@ -25,4 +25,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/creditCard.jpg 
+    - assets/creditCard.jpg
+    - assets/chip.jpg
+ 

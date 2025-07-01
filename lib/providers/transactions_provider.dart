@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/transaction.dart';
+import '../model/payment_type.dart';
 
 class TransactionsNotifier extends StateNotifier<List<Transaction>> {
   TransactionsNotifier() : super([]);
@@ -18,6 +19,104 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
 
   void clear() {
     state = [];
+  }
+
+  void seedMockData() {
+    final now = DateTime.now();
+    state = [
+      Transaction(
+        amount: -45.50,
+        date: now.subtract(const Duration(days: 2)),
+        description: 'Spesa supermercato',
+        categoryId: 'expense-food',
+        paymentType: PaymentType.creditCard,
+      ),
+      Transaction(
+        amount: -15.00,
+        date: now.subtract(const Duration(days: 1)),
+        description: 'Benzina',
+        categoryId: 'expense-transport',
+        paymentType: PaymentType.bancomat,
+      ),
+      Transaction(
+        amount: 1200.00,
+        date: now.subtract(const Duration(days: 5)),
+        description: 'Stipendio',
+        categoryId: 'income-salary',
+        paymentType: PaymentType.bankTransfer,
+      ),
+      Transaction(
+        amount: -60.00,
+        date: now.subtract(const Duration(days: 3)),
+        description: 'Cena fuori',
+        categoryId: 'expense-food',
+        paymentType: PaymentType.creditCard,
+      ),
+      Transaction(
+        amount: -80.00,
+        date: now.subtract(const Duration(days: 4)),
+        description: 'Shopping online',
+        categoryId: 'expense-shopping',
+        paymentType: PaymentType.creditCard,
+      ),
+      Transaction(
+        amount: 200.00,
+        date: now.subtract(const Duration(days: 10)),
+        description: 'Regalo compleanno',
+        categoryId: 'income-gift',
+        paymentType: PaymentType.cash,
+      ),
+      Transaction(
+        amount: -100.00,
+        date: now.subtract(const Duration(days: 7)),
+        description: 'Bollette luce',
+        categoryId: 'expense-bills',
+        paymentType: PaymentType.bankTransfer,
+      ),
+      Transaction(
+        amount: -30.00,
+        date: now.subtract(const Duration(days: 6)),
+        description: 'Cinema',
+        categoryId: 'expense-entertainment',
+        paymentType: PaymentType.cash,
+      ),
+      Transaction(
+        amount: 350.00,
+        date: now.subtract(const Duration(days: 12)),
+        description: 'Freelance',
+        categoryId: 'income-freelance',
+        paymentType: PaymentType.bankTransfer,
+      ),
+      // Nuove categorie spese mese corrente
+      Transaction(
+        amount: -22.00,
+        date: now.subtract(const Duration(days: 2)),
+        description: 'Farmacia',
+        categoryId: 'expense-health',
+        paymentType: PaymentType.cash,
+      ),
+      Transaction(
+        amount: -75.00,
+        date: now.subtract(const Duration(days: 5)),
+        description: 'Materiale scolastico',
+        categoryId: 'expense-education',
+        paymentType: PaymentType.creditCard,
+      ),
+      Transaction(
+        amount: -210.00,
+        date: now.subtract(const Duration(days: 8)),
+        description: 'Riparazione casa',
+        categoryId: 'expense-home',
+        paymentType: PaymentType.bankTransfer,
+      ),
+      Transaction(
+        amount: -55.00,
+        date: now.subtract(const Duration(days: 4)),
+        description: 'Concerto',
+        categoryId: 'expense-entertainment',
+        paymentType: PaymentType.creditCard,
+      ),
+    ];
   }
 
   // Metodi di utilità per calcoli

@@ -1,27 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../model/transaction.dart';
 import '../../model/payment_type.dart';
+import '../../providers/categories_provider.dart';
+import '../../model/category.dart';
+import '../home/home_screen.dart';
 
-class TransactionCard extends StatelessWidget {
+class TransactionCard extends ConsumerWidget {
   final Transaction transaction;
   final String? highlight;
   const TransactionCard({Key? key, required this.transaction, this.highlight})
       : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isIncome = transaction.amount > 0;
-    final amountColor = isIncome ? Colors.green : Colors.red;
-    final icon = _iconForCategory(transaction.categoryId);
+    final amountColor =
+        isIncome ? HomeScreen.kAppGreen : const Color(0xFFd32f2f);
+    final categories = ref.watch(categoriesProvider);
+    final category = categories.firstWhere(
+      (c) => c.id == transaction.categoryId,
+      orElse: () => categories.isNotEmpty
+          ? categories.first
+          : Category(
+              id: 'default',
+              name: 'Altro',
+              iconCodePoint: Icons.category_outlined.codePoint,
+              colorHex: '#BDBDBD',
+              type: 'expense',
+            ),
+    );
+    final iconWidget = category != null
+        ? Icon(category.icon, color: category.color, size: 28)
+        : const Icon(Icons.category_outlined, size: 28);
     final paymentTypeLabel = _labelForPaymentType(transaction.paymentType);
     final paymentTypeIcon = _iconForPaymentType(transaction.paymentType);
     final dateStr = _formatDate(transaction.date);
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
+        isThreeLine: false,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         leading: Container(
           width: 48,
           height: 48,
@@ -29,12 +51,16 @@ class TransactionCard extends StatelessWidget {
             color: theme.colorScheme.surfaceVariant,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: icon,
+          child: iconWidget,
         ),
         title: _highlightedText(transaction.description, highlight, theme),
-        subtitle: Text(dateStr,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.primary)),
+        subtitle: Text(
+          dateStr,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[700],
+          ),
+        ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -42,17 +68,20 @@ class TransactionCard extends StatelessWidget {
             Text(
               (isIncome ? '+' : '-') +
                   '€' +
-                  transaction.amount.abs().toStringAsFixed(2),
+                  _formatAmount(transaction.amount.abs()),
               style: theme.textTheme.titleMedium
                   ?.copyWith(color: amountColor, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Chip(
               label: Text(paymentTypeLabel, style: theme.textTheme.labelSmall),
               avatar: paymentTypeIcon,
               backgroundColor: theme.colorScheme.surfaceVariant,
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity(horizontal: -4, vertical: -4),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+              labelPadding: EdgeInsets.zero,
+              side: BorderSide.none,
             ),
           ],
         ),
@@ -80,34 +109,6 @@ class TransactionCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Widget _iconForCategory(String categoryId) {
-    // Placeholder: puoi mappare le icone in base alla categoria
-    switch (categoryId) {
-      case 'food':
-        return const Icon(Icons.shopping_cart_outlined, size: 28);
-      case 'salary':
-        return const Icon(Icons.work_outline, size: 28);
-      case 'utilities':
-        return const Icon(Icons.lightbulb_outline, size: 28);
-      case 'transport':
-        return const Icon(Icons.directions_bus, size: 28);
-      case 'restaurant':
-        return const Icon(Icons.restaurant, size: 28);
-      case 'online':
-        return const Icon(Icons.local_shipping_outlined, size: 28);
-      case 'fuel':
-        return const Icon(Icons.local_gas_station, size: 28);
-      case 'gym':
-        return const Icon(Icons.fitness_center, size: 28);
-      case 'coffee':
-        return const Icon(Icons.coffee, size: 28);
-      case 'cinema':
-        return const Icon(Icons.movie_creation_outlined, size: 28);
-      default:
-        return const Icon(Icons.category_outlined, size: 28);
-    }
   }
 
   String _labelForPaymentType(PaymentType type) {
@@ -142,5 +143,12 @@ class TransactionCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatAmount(double amount) {
+    return amount.toStringAsFixed(2).replaceAllMapped(
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (match) => '.',
+        );
   }
 }

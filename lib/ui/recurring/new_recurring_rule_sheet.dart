@@ -5,6 +5,8 @@ import '../../model/recurring_rule.dart';
 import '../../providers/categories_provider.dart';
 import '../../model/category.dart';
 import '../../model/payment_type.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class NewRecurringRuleSheet extends ConsumerStatefulWidget {
   const NewRecurringRuleSheet({Key? key}) : super(key: key);
@@ -32,6 +34,7 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
     'expense': 'Uscita',
     'income': 'Entrata',
   };
+  final _amountController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +45,10 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
         categories.where((cat) => cat.type == _categoryType).toList();
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
         left: 16,
@@ -63,6 +66,40 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
               const Text('Nuova regola ricorrente',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               const SizedBox(height: 16),
+              // Data di inizio (ora in cima)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _startDate,
+                      firstDate:
+                          DateTime.now().subtract(const Duration(days: 62)),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() => _startDate = picked);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Data di inizio',
+                      border: OutlineInputBorder(),
+                      fillColor: theme.colorScheme.surface,
+                      filled: true,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                            '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}'),
+                        const Icon(Icons.calendar_today, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               // Periodicità
               DropdownButtonFormField<String>(
                 value: _periodicity,
@@ -193,11 +230,11 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                 },
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).dividerColor),
+                    border: Border.all(color: theme.colorScheme.outline),
                     borderRadius: BorderRadius.circular(8),
-                    color: Theme.of(context).colorScheme.surface,
+                    color: theme.colorScheme.surface,
                   ),
                   child: Row(
                     children: [
@@ -238,55 +275,51 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Data di inizio
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: GestureDetector(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _startDate,
-                      firstDate:
-                          DateTime.now().subtract(const Duration(days: 62)),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (picked != null) {
-                      setState(() => _startDate = picked);
-                    }
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Data di inizio',
-                      border: OutlineInputBorder(),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                            '${_startDate.year}-${_startDate.month.toString().padLeft(2, '0')}-${_startDate.day.toString().padLeft(2, '0')}'),
-                        const Icon(Icons.calendar_today, size: 18),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
               // Importo
               TextFormField(
+                controller: _amountController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                    labelText: 'Importo',
-                    prefixText: '€ ',
-                    border: OutlineInputBorder()),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^[0-9,]*')),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Importo',
+                  prefixText: '€ ',
+                  border: const OutlineInputBorder(),
+                  fillColor: theme.colorScheme.surface,
+                  filled: true,
+                ),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Obbligatorio';
-                  final amount = double.tryParse(v.replaceAll(',', '.'));
+                  final amount = double.tryParse(
+                      v.replaceAll('.', '').replaceAll(',', '.'));
                   if (amount == null || amount <= 0)
                     return 'Importo non valido';
                   return null;
                 },
-                onSaved: (v) =>
-                    _amount = double.tryParse(v!.replaceAll(',', '.')),
+                onChanged: (value) {
+                  String cleaned =
+                      value.replaceAll('.', '').replaceAll(',', '.');
+                  if (cleaned.isEmpty) {
+                    _amountController.value = TextEditingValue(
+                      text: '',
+                      selection: TextSelection.collapsed(offset: 0),
+                    );
+                    return;
+                  }
+                  double? number = double.tryParse(cleaned);
+                  if (number == null) return;
+                  final formatter = NumberFormat.currency(
+                      locale: 'it_IT', symbol: '', decimalDigits: 2);
+                  String newText = formatter.format(number).trim();
+                  _amountController.value = TextEditingValue(
+                    text: newText,
+                    selection: TextSelection.collapsed(offset: newText.length),
+                  );
+                },
+                onSaved: (v) => _amount = double.tryParse(
+                    v!.replaceAll('.', '').replaceAll(',', '.')),
               ),
               const SizedBox(height: 16),
               // Tipo pagamento
@@ -319,19 +352,30 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                 },
               ),
               const SizedBox(height: 32),
-              // Bottone Salva
-              Center(
-                child: SizedBox(
-                  width: 180,
-                  child: FilledButton(
-                    onPressed: _save,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: Color(0xFF40C4FF),
+              // Bottoni Annulla e Salva
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Annulla'),
                     ),
-                    child: const Text('Salva'),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _save,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Color(0xFF40C4FF),
+                      ),
+                      child: const Text('Salva'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

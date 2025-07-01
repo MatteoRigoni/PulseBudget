@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 import '../../providers/transactions_provider.dart';
 import '../../model/transaction.dart';
 import 'transaction_card.dart';
+import '../../providers/period_filter_provider.dart';
 
 class MovementsScreen extends ConsumerStatefulWidget {
   const MovementsScreen({Key? key}) : super(key: key);
@@ -35,16 +36,25 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final periodFilter = ref.watch(periodFilterProvider);
     final transactions = ref.watch(transactionsProvider);
-    final filtered = transactions
+    // Applica filtro temporale come nella home
+    List<Transaction> filteredByPeriod = transactions;
+    if (periodFilter.period == 'Mese') {
+      filteredByPeriod = transactions
+          .where((t) =>
+              t.date.month == periodFilter.month &&
+              t.date.year == periodFilter.year)
+          .toList();
+    } else {
+      filteredByPeriod =
+          transactions.where((t) => t.date.year == periodFilter.year).toList();
+    }
+    final filtered = filteredByPeriod
         .where(
             (t) => t.description.toLowerCase().contains(_query.toLowerCase()))
         .toList()
-      ..sort((a, b) {
-        final amountCmp = b.amount.abs().compareTo(a.amount.abs());
-        if (amountCmp != 0) return amountCmp;
-        return b.date.compareTo(a.date);
-      });
+      ..sort((a, b) => b.date.compareTo(a.date));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Movimenti'),

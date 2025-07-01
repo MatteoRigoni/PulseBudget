@@ -120,7 +120,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
         .toList();
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
+      height: MediaQuery.of(context).size.height * 0.7,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -166,7 +166,44 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Combo categorie in cima
+                    // Campo Data (spostato sopra)
+                    InkWell(
+                      onTap: _selectDate,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10), // meno alto
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.colorScheme.outline),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today,
+                                color: theme.colorScheme.primary, size: 20),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Data',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.6),
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat('dd/MM/yyyy')
+                                      .format(_selectedDate),
+                                  style: theme.textTheme.bodyLarge,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Campo Categoria (meno alto)
                     GestureDetector(
                       onTap: () async {
                         String search = '';
@@ -272,7 +309,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 18, horizontal: 12),
+                            vertical: 10, horizontal: 12), // meno alto
                         decoration: BoxDecoration(
                           border:
                               Border.all(color: Theme.of(context).dividerColor),
@@ -330,8 +367,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d*[,.]?\d{0,2}')),
+                        FilteringTextInputFormatter.allow(RegExp(r'^[0-9,]*')),
                       ],
                       decoration: InputDecoration(
                         labelText: 'Importo',
@@ -346,51 +382,34 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                         if (value == null || value.isEmpty) {
                           return 'Inserisci un importo';
                         }
-                        final amount =
-                            double.tryParse(value.replaceAll(',', '.'));
+                        final amount = double.tryParse(
+                            value.replaceAll('.', '').replaceAll(',', '.'));
                         if (amount == null || amount <= 0) {
                           return 'Inserisci un importo valido';
                         }
                         return null;
                       },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Date Field
-                    InkWell(
-                      onTap: _selectDate,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: theme.colorScheme.outline),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_today,
-                                color: theme.colorScheme.primary),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Data',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withOpacity(0.6),
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('dd/MM/yyyy')
-                                      .format(_selectedDate),
-                                  style: theme.textTheme.bodyLarge,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                      onChanged: (value) {
+                        String cleaned =
+                            value.replaceAll('.', '').replaceAll(',', '.');
+                        if (cleaned.isEmpty) {
+                          _amountController.value = TextEditingValue(
+                            text: '',
+                            selection: TextSelection.collapsed(offset: 0),
+                          );
+                          return;
+                        }
+                        double? number = double.tryParse(cleaned);
+                        if (number == null) return;
+                        final formatter = NumberFormat.currency(
+                            locale: 'it_IT', symbol: '', decimalDigits: 2);
+                        String newText = formatter.format(number).trim();
+                        _amountController.value = TextEditingValue(
+                          text: newText,
+                          selection:
+                              TextSelection.collapsed(offset: newText.length),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 16),
@@ -401,14 +420,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                       decoration: const InputDecoration(
                         labelText: 'Descrizione',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.description),
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Inserisci una descrizione';
-                        }
-                        return null;
-                      },
                     ),
 
                     const SizedBox(height: 16),
