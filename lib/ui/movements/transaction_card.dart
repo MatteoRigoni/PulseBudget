@@ -142,7 +142,7 @@ class TransactionCard extends ConsumerWidget {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year.toString().padLeft(4, '0')}';
   }
 
   String _formatAmount(double amount) {

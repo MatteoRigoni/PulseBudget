@@ -17,7 +17,7 @@ class PulseBudgetApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pulse Budget',
+      title: 'BilancioMe',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,

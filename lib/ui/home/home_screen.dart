@@ -205,6 +205,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     month: _selectedMonth + 1,
                     year: _selectedYear,
                   );
+                  // Se si passa a 'Mese', scrolla la lista mesi sul selezionato
+                  if (_period == 'Mese') {
+                    final idx = _monthsList.indexWhere((d) =>
+                        d.year == _selectedYear &&
+                        d.month == _selectedMonth + 1);
+                    if (idx >= 0) {
+                      _monthScrollController.jumpTo(idx * 84.0);
+                    }
+                  }
                 },
                 style: ButtonStyle(
                   backgroundColor:

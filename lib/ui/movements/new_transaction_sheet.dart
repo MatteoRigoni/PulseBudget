@@ -367,7 +367,8 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^[0-9,]*')),
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'^[0-9,]{0,9}(,[0-9]{0,2})?')),
                       ],
                       decoration: InputDecoration(
                         labelText: 'Importo',
@@ -388,27 +389,6 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                           return 'Inserisci un importo valido';
                         }
                         return null;
-                      },
-                      onChanged: (value) {
-                        String cleaned =
-                            value.replaceAll('.', '').replaceAll(',', '.');
-                        if (cleaned.isEmpty) {
-                          _amountController.value = TextEditingValue(
-                            text: '',
-                            selection: TextSelection.collapsed(offset: 0),
-                          );
-                          return;
-                        }
-                        double? number = double.tryParse(cleaned);
-                        if (number == null) return;
-                        final formatter = NumberFormat.currency(
-                            locale: 'it_IT', symbol: '', decimalDigits: 2);
-                        String newText = formatter.format(number).trim();
-                        _amountController.value = TextEditingValue(
-                          text: newText,
-                          selection:
-                              TextSelection.collapsed(offset: newText.length),
-                        );
                       },
                     ),
 

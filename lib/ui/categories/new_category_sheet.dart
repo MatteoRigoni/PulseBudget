@@ -183,20 +183,17 @@ class _NewCategorySheetState extends ConsumerState<NewCategorySheet> {
   ];
 
   final List<String> _availableColors = [
-    '#4CAF50', // Green
-    '#2196F3', // Blue
-    '#FF9800', // Orange
-    '#E91E63', // Pink
-    '#FF5722', // Deep Orange
-    '#607D8B', // Blue Grey
-    '#9C27B0', // Purple
     '#F44336', // Red
-    '#673AB7', // Deep Purple
+    '#E91E63', // Pink
+    '#FF9800', // Orange
+    '#FFEB3B', // Yellow
+    '#4CAF50', // Green
     '#00BCD4', // Cyan
-    '#795548', // Brown
-    '#8BC34A', // Light Green
-    '#FFC107', // Amber
+    '#2196F3', // Blue
     '#3F51B5', // Indigo
+    '#9C27B0', // Purple
+    '#FFC107', // Amber
+    '#FF5722', // Deep Orange
     '#009688', // Teal
   ];
 
@@ -227,9 +224,9 @@ class _NewCategorySheetState extends ConsumerState<NewCategorySheet> {
     final theme = Theme.of(context);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
         child: Padding(
@@ -282,9 +279,11 @@ class _NewCategorySheetState extends ConsumerState<NewCategorySheet> {
                         // Nome categoria
                         TextFormField(
                           controller: _nameController,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Nome categoria',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
+                            fillColor: theme.colorScheme.surface,
+                            filled: true,
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
