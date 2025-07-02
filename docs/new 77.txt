@@ -116,10 +116,10 @@
 ────────────────────────────────────────────────────────
 1. Aggiungi firebase_core & cloud_firestore; Spark setup; init in main().
 2. Repository astratti + Firestore implementation:
-      TransactionRepository, CategoryRepository, RecurringRuleRepository.
+      TransactionRepository, CategoryRepository, RecurringRuleRepository, BalanceRepository.
 3. Migra providers a StreamProvider (watchByPeriod, watchAll…).
-4. NewTransactionSheet / Import / Ricorrenti ora usano repo.add / batch.
+4. NewTransactionSheet / Import / Ricorrenti /Categorie / Patrimonio ora usano repo.add / batch.
 5. Crea indice su `description_lowercase` per like-search.
-6. Aggiorna MovementsScreen a query Firestore.
+6. Aggiorna MovementsScreen, CategoryScreen, PatrimonioSCreen a query Firestore.
 7. Test con cloud_firestore_mocks.
 👉  Diff, attendi conferma prima di applicare.

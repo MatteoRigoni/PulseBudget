@@ -31,9 +31,19 @@ class RecurringRulesPage extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FilledButton.icon(
         onPressed: () => _showNewRuleSheet(context),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Nuova regola'),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          textStyle: Theme.of(context).textTheme.labelLarge,
+          elevation: 8,
+        ),
       ),
     );
   }

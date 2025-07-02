@@ -186,7 +186,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           children: [
             // PeriodSegmented
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'Mese', label: Text('Mese')),
@@ -262,13 +262,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Transform.translate(
-                                  offset: const Offset(0, -5),
+                                  offset: const Offset(0, -7),
                                   child: Column(
                                     children: [
                                       SizedBox(
                                         width: 84,
                                         child: Padding(
-                                          padding: EdgeInsets.only(top: 2),
+                                          padding: EdgeInsets.only(top: 0),
                                           child: Center(
                                             child: Text(
                                               months[date.month - 1],
@@ -337,17 +337,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       },
                     ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             // BalanceCard
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Analysis non ancora implementato')),
-                  );
-                },
+                onTapDown: (_) => _balanceAnimController.reverse(),
+                onTapUp: (_) => _balanceAnimController.forward(),
+                onTapCancel: () => _balanceAnimController.forward(),
                 child: ScaleTransition(
                   scale: _balanceScale,
                   child: Container(
@@ -364,6 +361,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         ],
                         stops: [0.0, 1.0],
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.18),
+                          blurRadius: 32,
+                          spreadRadius: 2,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                      border: Border.all(
+                          color: Colors.white.withOpacity(0.08), width: 1.2),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,18 +514,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: SizedBox(
                 width: 54,
                 height: 54,
-                child: FloatingActionButton(
-                  heroTag: "entrata",
-                  backgroundColor:
-                      const Color(0xCC7EE787), // verde pastello traslucido
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                child: AnimatedScale(
+                  scale: 1.0,
+                  duration: Duration(milliseconds: 120),
+                  child: FloatingActionButton(
+                    heroTag: "entrata",
+                    backgroundColor:
+                        const Color(0xCC7EE787), // verde pastello traslucido
+                    foregroundColor: Colors.white,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    onPressed: () => _showNewTransactionSheet(true),
+                    child: const Icon(Icons.add,
+                        size: 28, color: Colors.white, weight: 800),
                   ),
-                  onPressed: () => _showNewTransactionSheet(true),
-                  child: const Icon(Icons.add,
-                      size: 28, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -531,18 +542,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: SizedBox(
                 width: 54,
                 height: 54,
-                child: FloatingActionButton(
-                  heroTag: "uscita",
-                  backgroundColor:
-                      const Color(0xCCFF8A80), // rosso pastello traslucido
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                child: AnimatedScale(
+                  scale: 1.0,
+                  duration: Duration(milliseconds: 120),
+                  child: FloatingActionButton(
+                    heroTag: "uscita",
+                    backgroundColor:
+                        const Color(0xCCFF8A80), // rosso pastello traslucido
+                    foregroundColor: Colors.white,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    onPressed: () => _showNewTransactionSheet(false),
+                    child: const Icon(Icons.remove,
+                        size: 28, color: Colors.white, weight: 800),
                   ),
-                  onPressed: () => _showNewTransactionSheet(false),
-                  child: const Icon(Icons.remove,
-                      size: 28, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -630,9 +645,23 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
           ],
         ),
         if (sorted.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Text('Nessun dato significativo nel periodo selezionato.'),
+          SizedBox(
+            height: 265,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.emoji_objects,
+                      size: 64, color: Colors.amber.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                      'Nessuna spesa significativa!\nAggiungi la tua prima transazione.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(color: Colors.grey.shade600)),
+                ],
+              ),
+            ),
           )
         else
           SizedBox(

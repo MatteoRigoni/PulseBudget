@@ -6,6 +6,7 @@ import 'theme/app_theme.dart';
 import 'ui/recurring/recurring_rules_page.dart';
 import 'ui/movements/movements_screen.dart';
 import 'ui/report/analysis_sheet.dart';
+import 'ui/patrimonio/patrimonio_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: PulseBudgetApp()));
@@ -39,6 +40,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const MovementsScreen(),
+    const PatrimonioScreen(),
     AnalysisSheet(),
     const RecurringRulesPage(),
   ];
@@ -68,6 +70,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             icon: Icon(Icons.list_alt_outlined),
             selectedIcon: Icon(Icons.list_alt),
             label: 'Movimenti',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Patrimonio',
           ),
           NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),

@@ -44,15 +44,7 @@ class TransactionCard extends ConsumerWidget {
       child: ListTile(
         isThreeLine: false,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: iconWidget,
-        ),
+        leading: iconWidget,
         title: _highlightedText(transaction.description, highlight, theme),
         subtitle: Text(
           dateStr,

@@ -1,0 +1,341 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'snapshot_card.dart';
+import 'package:collection/collection.dart';
+import '../../model/snapshot.dart';
+import '../../providers/snapshot_provider.dart';
+import 'new_snapshot_sheet.dart';
+
+class PatrimonioScreen extends ConsumerWidget {
+  const PatrimonioScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final entities = ref.watch(entityProvider);
+    final selectedEntityId = ref.watch(selectedEntityProvider);
+    final snapshots = ref
+        .watch(snapshotProvider)
+        .where((s) =>
+            s.label ==
+            (entities.firstWhereOrNull((e) => e.id == selectedEntityId)?.name ??
+                ''))
+        .toList();
+    final notifier = ref.read(snapshotProvider.notifier);
+    final entityNotifier = ref.read(entityProvider.notifier);
+    final setSelectedEntity = ref.read(selectedEntityProvider.notifier);
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppBar(
+        title: const Text('Patrimonio'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            tooltip: 'Vai a Patrimonio',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (context) => const PatrimonioScreen()),
+              );
+            },
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'date') {
+                notifier.sortByDateDesc();
+              } else if (value == 'amount') {
+                notifier.sortByAmountDesc();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'date',
+                child: Text('Ordina per data'),
+              ),
+              const PopupMenuItem(
+                value: 'amount',
+                child: Text('Ordina per valore'),
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Filtro account
+          SizedBox(
+            height: 56,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              itemCount: entities.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                if (i < entities.length) {
+                  final entity = entities[i];
+                  return GestureDetector(
+                    onLongPress: () {
+                      if (entities.length > 1) {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Elimina account?'),
+                            content: Text(
+                                'Vuoi eliminare ${entity.type} ${entity.name}?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Annulla'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  entityNotifier.removeEntity(entity.id);
+                                  if (selectedEntityId == entity.id &&
+                                      entities.length > 1) {
+                                    setSelectedEntity.state = entities
+                                        .firstWhere((e) => e.id != entity.id)
+                                        .id;
+                                  }
+                                  Navigator.of(ctx).pop();
+                                },
+                                child: const Text('Elimina'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    child: ChoiceChip(
+                      label: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: entity.type.toUpperCase(),
+                              style: TextStyle(
+                                color: selectedEntityId == entity.id
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : Theme.of(context).colorScheme.onSurface,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text: '  ',
+                            ),
+                            TextSpan(
+                              text: '(${entity.name})',
+                              style: TextStyle(
+                                color: selectedEntityId == entity.id
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary
+                                        .withOpacity(0.85)
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.7),
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                          style: DefaultTextStyle.of(context).style,
+                        ),
+                      ),
+                      selected: selectedEntityId == entity.id,
+                      onSelected: (_) => setSelectedEntity.state = entity.id,
+                      backgroundColor: Theme.of(context).colorScheme.surface,
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      labelStyle: TextStyle(
+                        color: selectedEntityId == entity.id
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  );
+                } else {
+                  // Bottone aggiungi account
+                  return ActionChip(
+                    avatar: const Icon(Icons.add, size: 18),
+                    label: const Text('Aggiungi account'),
+                    onPressed: () async {
+                      String? type;
+                      String? name;
+                      await showDialog(
+                        context: context,
+                        builder: (ctx) {
+                          return AlertDialog(
+                            title: const Text('Nuovo account'),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                      labelText: 'Tipologia account'),
+                                  items: const [
+                                    DropdownMenuItem(
+                                        value: 'Conto', child: Text('Conto')),
+                                    DropdownMenuItem(
+                                        value: 'Dossier',
+                                        child: Text('Dossier')),
+                                    DropdownMenuItem(
+                                        value: 'Altro', child: Text('Altro')),
+                                  ],
+                                  onChanged: (v) => type = v,
+                                ),
+                                TextFormField(
+                                  decoration:
+                                      const InputDecoration(labelText: 'Nome'),
+                                  onChanged: (v) => name = v,
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Annulla'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  if (type != null &&
+                                      name != null &&
+                                      name!.trim().isNotEmpty) {
+                                    final normalized =
+                                        (String s) => s.trim().toLowerCase();
+                                    final exists = ref.read(entityProvider).any(
+                                        (e) =>
+                                            normalized(e.type) ==
+                                                normalized(type!) &&
+                                            normalized(e.name) ==
+                                                normalized(name!));
+                                    if (exists) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Account già esistente con stesso tipo e nome')),
+                                      );
+                                    } else {
+                                      entityNotifier.addEntity(
+                                          type!, name!.trim());
+                                      setSelectedEntity.state =
+                                          ref.read(entityProvider).last.id;
+                                      Navigator.of(ctx).pop();
+                                    }
+                                  }
+                                },
+                                child: const Text('Salva'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  );
+                }
+              },
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: 80),
+              itemCount: snapshots.length,
+              itemBuilder: (context, index) {
+                final snapshot = snapshots[index];
+                final prev = snapshots.skip(index + 1).firstWhereOrNull(
+                      (s) => s.label == snapshot.label,
+                    );
+                return Dismissible(
+                  key: ValueKey(snapshot.id),
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 24),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('Elimina',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  secondaryBackground: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 24),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text('Elimina',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        SizedBox(width: 8),
+                        Icon(Icons.delete, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                  onDismissed: (direction) {
+                    notifier.remove(snapshot.id);
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Rilevazione eliminata'),
+                        action: SnackBarAction(
+                          label: 'Ripristina',
+                          onPressed: () => notifier.undoRemove(),
+                        ),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                  child: SnapshotCard(
+                    snapshot: snapshot,
+                    previous: prev,
+                    onDelete: () {
+                      notifier.remove(snapshot.id);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Rilevazione eliminata'),
+                          action: SnackBarAction(
+                            label: 'Ripristina',
+                            onPressed: () => notifier.undoRemove(),
+                          ),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FilledButton.icon(
+        onPressed: () async {
+          await showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const NewSnapshotSheet(),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Nuova rilevazione'),
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          textStyle: Theme.of(context).textTheme.labelLarge,
+          elevation: 8,
+        ),
+      ),
+    );
+  }
+}
