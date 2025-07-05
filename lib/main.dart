@@ -23,62 +23,6 @@ void main() async {
   runApp(const ProviderScope(child: PulseBudgetApp()));
 }
 
-Future<void> _initializeDefaultCategories() async {
-  try {
-    final databaseService = DatabaseService();
-    final categories = await databaseService.getCategories();
-
-    // Se non ci sono categorie, inserisci quelle default
-    if (categories.isEmpty) {
-      final seedService = SeedDataService(databaseService);
-      await seedService.seedData(); // Solo categorie default
-      print(
-          '[DEBUG] Categorie default inserite automaticamente al primo avvio');
-    }
-  } catch (e) {
-    print('[ERROR] Errore durante l\'inizializzazione delle categorie: $e');
-  }
-}
-
-Future<void> _executeRecurringBootstrap() async {
-  try {
-    print('[DEBUG] ===== BOOTSTRAP MAIN.DART INIZIATO =====');
-    final databaseService = DatabaseService();
-
-    // Ottieni le regole ricorrenti
-    final rules = await databaseService.getRecurringRules();
-    print('[DEBUG] Regole ricorrenti trovate: ${rules.length}');
-
-    // Ottieni le transazioni esistenti
-    final existingTransactions = await databaseService.getTransactions();
-    print('[DEBUG] Transazioni esistenti: ${existingTransactions.length}');
-
-    // Genera le transazioni ricorrenti scadute
-    final now = DateTime.now();
-    final newTransactions = generateDueRecurringTransactions(
-      rules: rules,
-      existingTransactions: existingTransactions,
-      now: now,
-    );
-
-    print(
-        '[DEBUG] Transazioni ricorrenti da generare: ${newTransactions.length}');
-
-    // Inserisci le nuove transazioni usando il database service direttamente
-    // (nel main.dart non abbiamo accesso al provider, quindi usiamo il database service)
-    if (newTransactions.isNotEmpty) {
-      for (final transaction in newTransactions) {
-        await databaseService.insertTransaction(transaction);
-      }
-      print(
-          '[DEBUG] Transazioni ricorrenti inserite: ${newTransactions.length}');
-    }
-    print('[DEBUG] ===== BOOTSTRAP MAIN.DART COMPLETATO =====');
-  } catch (e) {
-    print('[ERROR] Errore durante il bootstrap delle ricorrenti: $e');
-  }
-}
-
 class PulseBudgetApp extends StatelessWidget {
   const PulseBudgetApp({super.key});
 
@@ -123,6 +67,39 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeApp() async {
     print('[DEBUG] Inizializzazione categorie default...');
 
+    try {
+      // Timeout di sicurezza - massimo 3 secondi
+      await Future.any([
+        _performInitialization(),
+        Future.delayed(const Duration(seconds: 3), () {
+          print('[WARNING] Timeout raggiunto, forzando la navigazione');
+        }),
+      ]);
+    } catch (e) {
+      print('[ERROR] Errore durante l\'inizializzazione: $e');
+    }
+
+    print('[DEBUG] Inizializzazione completata, navigazione alla home...');
+
+    // SEMPRE naviga alla home, anche se c'è un errore
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+
+      // Forza la navigazione dopo un breve delay per sicurezza
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+                builder: (context) => const MainNavigationScreen()),
+          );
+        }
+      });
+    }
+  }
+
+  Future<void> _performInitialization() async {
     // Inizializza le categorie default al primo avvio
     await _initializeDefaultCategories();
 
@@ -130,18 +107,61 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Esegui il bootstrap delle ricorrenti una sola volta all'avvio
     await _executeRecurringBootstrap();
+  }
 
-    print('[DEBUG] Inizializzazione completata, navigazione alla home...');
+  Future<void> _initializeDefaultCategories() async {
+    try {
+      final databaseService = DatabaseService();
+      final categories = await databaseService.getCategories();
 
-    if (mounted) {
-      setState(() {
-        _isInitialized = true;
-      });
+      // Se non ci sono categorie, inserisci quelle default
+      if (categories.isEmpty) {
+        final seedService = SeedDataService(databaseService);
+        await seedService.seedData(); // Solo categorie default
+        print(
+            '[DEBUG] Categorie default inserite automaticamente al primo avvio');
+      }
+    } catch (e) {
+      print('[ERROR] Errore durante l\'inizializzazione delle categorie: $e');
+    }
+  }
 
-      // Navigazione immediata senza delay
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+  Future<void> _executeRecurringBootstrap() async {
+    try {
+      print('[DEBUG] ===== BOOTSTRAP MAIN.DART INIZIATO =====');
+      final databaseService = DatabaseService();
+
+      // Ottieni le regole ricorrenti
+      final rules = await databaseService.getRecurringRules();
+      print('[DEBUG] Regole ricorrenti trovate: ${rules.length}');
+
+      // Ottieni le transazioni esistenti
+      final existingTransactions = await databaseService.getTransactions();
+      print('[DEBUG] Transazioni esistenti: ${existingTransactions.length}');
+
+      // Genera le transazioni ricorrenti scadute
+      final now = DateTime.now();
+      final newTransactions = generateDueRecurringTransactions(
+        rules: rules,
+        existingTransactions: existingTransactions,
+        now: now,
       );
+
+      print(
+          '[DEBUG] Transazioni ricorrenti da generare: ${newTransactions.length}');
+
+      // Inserisci le nuove transazioni usando il database service direttamente
+      // (nel main.dart non abbiamo accesso al provider, quindi usiamo il database service)
+      if (newTransactions.isNotEmpty) {
+        for (final transaction in newTransactions) {
+          await databaseService.insertTransaction(transaction);
+        }
+        print(
+            '[DEBUG] Transazioni ricorrenti inserite: ${newTransactions.length}');
+      }
+      print('[DEBUG] ===== BOOTSTRAP MAIN.DART COMPLETATO =====');
+    } catch (e) {
+      print('[ERROR] Errore durante il bootstrap delle ricorrenti: $e');
     }
   }
 
