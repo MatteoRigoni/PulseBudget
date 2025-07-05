@@ -123,3 +123,110 @@
 6. Aggiorna MovementsScreen, CategoryScreen, PatrimonioSCreen a query Firestore.
 7. Test con cloud_firestore_mocks.
 👉  Diff, attendi conferma prima di applicare.
+
+
+
+────────────────────────────────────────────────────────
+📥  MODULO 10 – “Importa estratto PDF” 100 % OFF-LINE
+     • parser universale (regex scorrevole)
+     • AI Naive Bayes locale + regole keyword
+     • anteprima modificabile
+     • opzionale “sovrascrivi movimenti esistenti”
+────────────────────────────────────────────────────────
+Prerequisiti: completati i Moduli 0-8 (app locale).  
+Questo modulo sostituisce l’old “Import CSV/PDF” (Mod. 7).
+
+────────────────────────────────────────────────────────
+1️⃣  Nuove dipendenze
+────────────────────────────────────────────────────────
+pdf_text                      # estrazione testo
+isar                          # cache + training-set
+flutter_chips_input           # picker categorie
+dart_numerics                 # cosineSimilarity (NB confidence)
+
+────────────────────────────────────────────────────────
+2️⃣  Isar schema
+────────────────────────────────────────────────────────
+collection TrainSample { id int auto, desc string, categoryId string }
+collection CategoryStat { categoryId string PK,
+                          total int,
+                          wordCounts Map<String,int> }
+
+────────────────────────────────────────────────────────
+3️⃣  Servizi
+────────────────────────────────────────────────────────
+PdfParserService
+  • Usa pdf_text (o Tesseract fallback se bitmap) → List<String> lines.
+  • Regex universali:
+      dateRe  = r'\d{2}/\d{2}/\d{2,4}'
+      amtRe   = r'[-+]?\d[\d.]*,\d{2}'
+  • Per ogni line:
+      date  = dateRe.firstMatch
+      amount= amtRe.lastMatch
+      desc  = line.substring(date.end, amount.start).trim()
+      if both matches → ImportedTx(date, desc, amount)
+
+CategoryClassifier
+  • ruleMap Regex → catId (seed MCC + keyword)
+  • NaiveBayes offline (train da Isar.TrainSample + Laplace smoothing)
+  • predict(desc) → catId? + conf (0-1)
+
+────────────────────────────────────────────────────────
+4️⃣  Flow UI completo
+────────────────────────────────────────────────────────
+Home ▸ overflow “Importa estratto…”
+
+➊ **PaymentTypeSheet** (ModalBottomSheet 40 %)
+    – SegmentedButton 2 opzioni: “Carta Credito”, “Bancomat”
+    – Checkbox “Sovrascrivi movimenti di questa tipologia
+      nell’intervallo dell’estratto”
+    – Button “Avanti”
+
+➋ **FilePicker** accetta *.pdf
+
+➌ **ProgressDialog**
+    – M3 AlertDialog full-width
+    – CircularProgressIndicator + “Analisi estratto in corso…”
+
+➍ Dopo parsing & classificazione →
+   dismiss dialog → **PreviewScreen**
+    • ListView TransactionPreviewCard:
+        icona categoria + desc + importo ± + chip conf:
+            ✓ verde conf>0.85 | ! giallo 0.7-0.85 | ? rosso <0.7
+        tap chip → CategoryPickerSheet (grid icone 4 col)
+    • AppBar:
+        – Seleziona-tutto ✓
+        – Pulsante “Importa” abilitato se tutte righe green ✓ o corrette
+
+➎ On “Importa” tap:
+    if checkboxOverwrite:
+        repo.deleteByDateAndPaymentType(startDate, endDate, selectedType)
+    for tx in righe:
+        if corrected → TrainSample.put(desc, catId)
+        classifier.retrainIncremental()
+        transactionsProvider.add(tx.toTransaction())
+    Navigator.popUntil(Home)
+    BalanceCard.animateScale()
+    Snackbar “Import OK – ${n} movimenti, ${k} correzioni salvate”
+
+────────────────────────────────────────────────────────
+5️⃣  API provider / repository da creare
+────────────────────────────────────────────────────────
+TransactionRepository
+    void deleteByDateAndPaymentType(DateTime from, DateTime to,
+                                    PaymentType type);
+    void batchInsert(List<Transaction>);
+(train stays in memory for now – no Firestore)
+
+────────────────────────────────────────────────────────
+6️⃣  Test
+────────────────────────────────────────────────────────
+Unit
+  • PdfParserService parses 3 bank layouts (fixtures) → 100 % righe.
+  • CategoryClassifier.confidence returns >0.85 for seed rules.
+Widget
+  • PreviewScreen mostra chip rosse per conf<0.7
+  • Check “sovrascrivi” elimina solo movimenti Bancomat nel range.
+
+────────────────────────────────────────────────────────
+👉  Genera i patch diff e **attendi la mia conferma** prima di applicare.

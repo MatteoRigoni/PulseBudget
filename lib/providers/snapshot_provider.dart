@@ -1,50 +1,79 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/snapshot.dart';
+import '../repository/balance_repository.dart';
+import 'repository_providers.dart';
 import 'dart:collection';
 import 'package:uuid/uuid.dart';
 
-class SnapshotNotifier extends StateNotifier<List<Snapshot>> {
-  SnapshotNotifier() : super([]);
+/// Provider per tutti gli snapshot (StreamProvider)
+final snapshotProvider = StreamProvider<List<Snapshot>>((ref) {
+  final repository = ref.watch(balanceRepositoryProvider);
+  return repository.watchAll();
+});
 
-  Snapshot? _lastRemoved;
-  int? _lastRemovedIndex;
+/// Provider per gli snapshot filtrati per periodo
+final snapshotsByPeriodProvider =
+    StreamProvider.family<List<Snapshot>, ({DateTime start, DateTime end})>(
+        (ref, period) {
+  final repository = ref.watch(balanceRepositoryProvider);
+  return repository.watchByPeriod(period.start, period.end);
+});
 
-  void add(Snapshot snapshot) {
-    state = [...state, snapshot]..sort((a, b) => b.date.compareTo(a.date));
-  }
+/// Notifier per le operazioni CRUD degli snapshot
+class SnapshotNotifier extends StateNotifier<AsyncValue<void>> {
+  final BalanceRepository _repository;
 
-  void remove(String id) {
-    _lastRemovedIndex = state.indexWhere((s) => s.id == id);
-    if (_lastRemovedIndex != null && _lastRemovedIndex! >= 0) {
-      _lastRemoved = state[_lastRemovedIndex!];
-      final newList = [...state]..removeAt(_lastRemovedIndex!);
-      state = newList;
+  SnapshotNotifier(this._repository) : super(const AsyncValue.data(null));
+
+  Future<void> add(Snapshot snapshot) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.add(snapshot);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
     }
   }
 
-  void undoRemove() {
-    if (_lastRemoved != null && _lastRemovedIndex != null) {
-      final newList = [...state];
-      newList.insert(_lastRemovedIndex!, _lastRemoved!);
-      state = newList;
-      _lastRemoved = null;
-      _lastRemovedIndex = null;
+  Future<void> remove(String id) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.delete(id);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
     }
   }
 
-  void sortByDateDesc() {
-    state = [...state]..sort((a, b) => b.date.compareTo(a.date));
+  Future<void> update(Snapshot snapshot) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.update(snapshot);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
   }
 
-  void sortByAmountDesc() {
-    state = [...state]..sort((a, b) => b.amount.compareTo(a.amount));
+  Future<void> addBatch(List<Snapshot> snapshots) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.addBatch(snapshots);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
   }
 }
 
-final snapshotProvider =
-    StateNotifierProvider<SnapshotNotifier, List<Snapshot>>(
-        (ref) => SnapshotNotifier());
+/// Provider per le operazioni CRUD degli snapshot
+final snapshotNotifierProvider =
+    StateNotifierProvider<SnapshotNotifier, AsyncValue<void>>((ref) {
+  final repository = ref.watch(balanceRepositoryProvider);
+  return SnapshotNotifier(repository);
+});
 
+// Provider per le entità (mantenuto come prima per ora)
 class EntityNotifier extends StateNotifier<List<Entity>> {
   EntityNotifier() : super([]);
 

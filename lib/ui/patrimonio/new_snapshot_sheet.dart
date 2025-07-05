@@ -266,7 +266,7 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
                             _formKey.currentState!.save();
                             final entity = entities.firstWhereOrNull(
@@ -281,7 +281,9 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
                                   ? _noteController.text
                                   : null,
                             );
-                            ref.read(snapshotProvider.notifier).add(snapshot);
+                            await ref
+                                .read(snapshotNotifierProvider.notifier)
+                                .add(snapshot);
                             Navigator.of(context).pop();
                           }
                         },

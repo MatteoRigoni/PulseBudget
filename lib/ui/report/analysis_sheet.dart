@@ -47,8 +47,34 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final transactions = ref.watch(transactionsProvider);
-    final categories = ref.watch(categoriesProvider);
+    final transactionsAsync = ref.watch(transactionsProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    // Gestisci stati di loading e error
+    if (transactionsAsync.isLoading || categoriesAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (transactionsAsync.hasError || categoriesAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final transactions = transactionsAsync.value ?? [];
+    final categories = categoriesAsync.value ?? [];
+
     List<Transaction> filtered = transactions;
     if (selectedRange != null) {
       filtered = transactions
@@ -104,8 +130,7 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
                 children: [
                   Icon(Icons.bar_chart, size: 64, color: Colors.amber.shade400),
                   const SizedBox(height: 16),
-                  Text(
-                      'Nessun dato per il periodo selezionato\nSeleziona un intervallo o aggiungi transazioni per vedere il grafico!',
+                  Text('Nessun dato per il periodo selezionato!',
                       textAlign: TextAlign.center,
                       style: Theme.of(context)
                           .textTheme

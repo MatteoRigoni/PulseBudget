@@ -57,9 +57,35 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final periodFilter = ref.watch(periodFilterProvider);
-    final transactions = ref.watch(transactionsProvider);
-    final categories = ref.watch(categoriesProvider);
+    final transactionsAsync = ref.watch(transactionsProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
     final accounts = ref.watch(entityProvider);
+
+    // Gestisci stati di loading e error
+    if (transactionsAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (transactionsAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento: ${transactionsAsync.error}'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final transactions = transactionsAsync.value ?? [];
+    final categories = categoriesAsync.value ?? [];
+
     // Applica filtro temporale come nella home
     List<Transaction> filteredByPeriod = transactions;
     if (periodFilter.period == 'Mese') {
@@ -228,10 +254,10 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
                           ],
                         ),
                       ),
-                      onDismissed: (direction) {
-                        ref
-                            .read(transactionsProvider.notifier)
-                            .remove(transaction.id);
+                      onDismissed: (direction) async {
+                        await ref
+                            .read(transactionsNotifierProvider.notifier)
+                            .delete(transaction.id);
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Movimento eliminato')),
                         );
@@ -344,7 +370,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 spacing: 8,
                 children: PaymentType.values
                     .map((pt) => FilterChip(
-                          label: Text(pt.name),
+                          label: Text(_getPaymentTypeLabel(pt)),
                           selected: _selectedPaymentTypes.contains(pt),
                           onSelected: (sel) => setState(() {
                             if (sel) {
@@ -439,5 +465,20 @@ class _FilterSheetState extends State<_FilterSheet> {
         ),
       ),
     );
+  }
+
+  String _getPaymentTypeLabel(PaymentType type) {
+    switch (type) {
+      case PaymentType.cash:
+        return 'CASH';
+      case PaymentType.bancomat:
+        return 'DEB';
+      case PaymentType.creditCard:
+        return 'CRED';
+      case PaymentType.bankTransfer:
+        return 'BANK';
+      default:
+        return type.name;
+    }
   }
 }

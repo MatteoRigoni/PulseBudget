@@ -19,6 +19,10 @@ class NewRecurringRuleSheet extends ConsumerStatefulWidget {
 
 class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _focusNode = FocusNode();
+
   double? _amount;
   String? _categoryId;
   String _ruleName = '';
@@ -36,15 +40,44 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
     'expense': 'Uscita',
     'income': 'Entrata',
   };
-  final _amountController = TextEditingController();
-  final _nameController = TextEditingController();
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _nameController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categories = ref.watch(categoriesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
     final mq = MediaQuery.of(context);
 
+    // Gestisci stati di loading e error
+    if (categoriesAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (categoriesAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento: ${categoriesAsync.error}'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final categories = categoriesAsync.value ?? [];
     final filteredCategories =
         categories.where((cat) => cat.type == _categoryType).toList();
 
@@ -161,6 +194,9 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                 // Selettore categoria
                 GestureDetector(
                   onTap: () async {
+                    // Chiudi la tastiera se è aperta
+                    FocusScope.of(context).unfocus();
+
                     String search = '';
                     final selected = await showModalBottomSheet<Category>(
                       context: context,
@@ -232,8 +268,11 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                                           shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(12)),
-                                          onTap: () =>
-                                              Navigator.of(context).pop(cat),
+                                          onTap: () {
+                                            // Chiudi la tastiera e il modal
+                                            FocusScope.of(context).unfocus();
+                                            Navigator.of(context).pop(cat);
+                                          },
                                           trailing: selected
                                               ? const Icon(Icons.check,
                                                   color: Colors.green)
@@ -251,6 +290,10 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                     );
                     if (selected != null) {
                       setState(() => _categoryId = selected.id);
+                      // Passa il focus al campo successivo (importo)
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        FocusScope.of(context).requestFocus(_focusNode);
+                      });
                     }
                   },
                   child: Container(
@@ -404,7 +447,7 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
     );
   }
 
-  void _save() {
+  void _save() async {
     if (_formKey.currentState?.validate() ?? false) {
       _formKey.currentState?.save();
       if (_amount != null && _categoryId != null && _paymentType != null) {
@@ -417,7 +460,7 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
           rrule: _rrule,
           startDate: _startDate,
         );
-        ref.read(recurringRulesProvider.notifier).addRule(rule);
+        await ref.read(recurringRulesNotifierProvider.notifier).addRule(rule);
         Navigator.of(context).pop();
       }
     }

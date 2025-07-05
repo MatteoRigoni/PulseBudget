@@ -26,16 +26,17 @@ class Transaction {
 
   // Factory constructor per creare una transazione da JSON
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    final description = json['description'] as String;
     return Transaction(
       id: json['id'] as String,
       amount: (json['amount'] as num).toDouble(),
       date: DateTime.parse(json['date'] as String),
-      description: json['description'] as String,
+      description: description,
       categoryId: json['categoryId'] as String,
       paymentType: PaymentType.values.firstWhere(
         (e) => e.toString() == 'PaymentType.${json['paymentType']}',
       ),
-      isRecurring: json['isRecurring'] as bool? ?? false,
+      isRecurring: (json['isRecurring'] as int?) == 1,
       recurringRuleName: json['recurringRuleName'] as String?,
     );
   }
@@ -47,9 +48,10 @@ class Transaction {
       'amount': amount,
       'date': date.toIso8601String(),
       'description': description,
+      'descriptionLowercase': descriptionLowercase,
       'categoryId': categoryId,
       'paymentType': paymentType.toString().split('.').last,
-      'isRecurring': isRecurring,
+      'isRecurring': isRecurring ? 1 : 0,
       'recurringRuleName': recurringRuleName,
     };
   }

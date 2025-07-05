@@ -51,6 +51,28 @@ class Snapshot {
       label.hashCode ^
       amount.hashCode ^
       (note?.hashCode ?? 0);
+
+  // Factory constructor per creare uno snapshot da JSON
+  factory Snapshot.fromJson(Map<String, dynamic> json) {
+    return Snapshot(
+      id: json['id'] as String,
+      date: DateTime.parse(json['date'] as String),
+      label: json['label'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      note: json['note'] as String?,
+    );
+  }
+
+  // Metodo per convertire in JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'date': date.toIso8601String(),
+      'label': label,
+      'amount': amount,
+      'note': note,
+    };
+  }
 }
 
 class Entity {

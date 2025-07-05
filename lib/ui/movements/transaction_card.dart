@@ -18,7 +18,19 @@ class TransactionCard extends ConsumerWidget {
     final isIncome = transaction.amount > 0;
     final amountColor =
         isIncome ? HomeScreen.kAppGreen : const Color(0xFFd32f2f);
-    final categories = ref.watch(categoriesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    // Gestisci stati di loading e error
+    if (categoriesAsync.isLoading) {
+      return const Card(
+        child: ListTile(
+          leading: CircularProgressIndicator(),
+          title: Text('Caricamento...'),
+        ),
+      );
+    }
+
+    final categories = categoriesAsync.value ?? [];
     final category = categories.firstWhere(
       (c) => c.id == transaction.categoryId,
       orElse: () => categories.isNotEmpty

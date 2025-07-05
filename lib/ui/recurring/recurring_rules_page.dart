@@ -48,8 +48,33 @@ class RecurringRulesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rules = ref.watch(recurringRulesProvider);
-    final categories = ref.watch(categoriesProvider);
+    final rulesAsync = ref.watch(recurringRulesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    // Gestisci stati di loading e error
+    if (rulesAsync.isLoading || categoriesAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (rulesAsync.hasError || categoriesAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final rules = rulesAsync.value ?? [];
+    final categories = categoriesAsync.value ?? [];
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
@@ -58,18 +83,14 @@ class RecurringRulesPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Ricalcola ricorrenti',
-            onPressed: () {
-              // Leggi i dati delle regole e transazioni
-              final rules = ref.read(recurringRulesProvider);
-              final transactions = ref.read(transactionsProvider);
+            onPressed: () async {
               final now = DateTime.now();
-              // Forza il ricalcolo delle ricorrenze
+              // Forza il ricalcolo delle ricorrenze usando il notifier (come nella versione vecchia)
               executeRecurringBootstrapFromWidget(ref);
+
               // Mostra messaggio di debug
-              final msg = '[DEBUG] Ricalcolo ricorrenti\nnow: '
-                  '${now.toIso8601String()}\n'
-                  'rules: ${rules.length}\n'
-                  'existingTransactions: ${transactions.length}';
+              final msg =
+                  'Ricalcolo ricorrenti completato alle: ${now.toIso8601String()}';
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(msg),
@@ -115,9 +136,9 @@ class RecurringRulesPage extends ConsumerWidget {
                       color: Colors.white,
                     ),
                   ),
-                  onDismissed: (direction) {
-                    ref
-                        .read(recurringRulesProvider.notifier)
+                  onDismissed: (direction) async {
+                    await ref
+                        .read(recurringRulesNotifierProvider.notifier)
                         .removeRule(rule.id);
                     ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -125,8 +146,8 @@ class RecurringRulesPage extends ConsumerWidget {
                         content: const Text('Regola eliminata'),
                         action: SnackBarAction(
                           label: 'Ripristina',
-                          onPressed: () {
-                            // TODO: Implementare ripristino
+                          onPressed: () async {
+                            // TODO: Implementare ripristino con Firestore
                           },
                         ),
                         duration: const Duration(seconds: 3),

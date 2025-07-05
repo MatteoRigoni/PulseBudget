@@ -61,4 +61,30 @@ class RecurringRule {
       paymentType.hashCode ^
       rrule.hashCode ^
       startDate.hashCode;
+
+  // Factory constructor per creare una regola ricorrente da JSON
+  factory RecurringRule.fromJson(Map<String, dynamic> json) {
+    return RecurringRule(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      categoryId: json['categoryId'] as String,
+      paymentType: json['paymentType'] as String,
+      rrule: json['rrule'] as String,
+      startDate: DateTime.parse(json['startDate'] as String),
+    );
+  }
+
+  // Metodo per convertire in JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'amount': amount,
+      'categoryId': categoryId,
+      'paymentType': paymentType,
+      'rrule': rrule,
+      'startDate': startDate.toIso8601String(),
+    };
+  }
 }

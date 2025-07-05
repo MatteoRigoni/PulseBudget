@@ -3,16 +3,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/transactions_provider.dart';
 import '../movements/new_transaction_sheet.dart';
-import '../../providers/recurring_bootstrap_provider.dart';
+
 import '../movements/movements_screen.dart';
 import '../../model/transaction.dart';
 import '../../model/category.dart';
 import '../../providers/categories_provider.dart';
+import '../../providers/snapshot_provider.dart';
+import '../../providers/recurring_rules_provider.dart';
 import '../report/analysis_sheet.dart';
 import '../categories/categories_screen.dart';
 import 'package:intl/intl.dart';
 import '../../providers/period_filter_provider.dart';
-import '../../providers/recurring_rules_provider.dart';
+import '../../services/backup_service.dart';
+import '../../services/database_service.dart';
+import '../../services/seed_data_service.dart';
+import '../../services/cloud_sync_service.dart';
+import '../../services/auto_sync_service.dart';
+import '../widgets/sync_status_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -68,25 +75,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
     _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
     _balanceAnimController.value = 1.0;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Leggi i dati delle regole e transazioni
-      final rules = ref.read(recurringRulesProvider);
-      final transactions = ref.read(transactionsProvider);
-      final now = DateTime.now();
-      // Chiama il bootstrap (ricalcolo)
-      ref.read(recurringBootstrapProvider);
-      // Mostra uno SnackBar con i dati di debug
-      final msg = '[DEBUG] Ricalcolo ricorrenti\nnow: '
-          '${now.toIso8601String()}\n'
-          'rules: ${rules.length}\n'
-          'existingTransactions: ${transactions.length}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    });
   }
 
   @override
@@ -110,11 +98,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+  void _showCloudSyncDialog(BuildContext context) async {
+    final databaseService = DatabaseService();
+    final cloudSyncService = CloudSyncService(databaseService);
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Sincronizzazione Cloud'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.cloud_sync),
+                title: const Text('Sincronizzazione Automatica'),
+                subtitle:
+                    const Text('Sincronizza da solo con OneDrive/Google Drive'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final provider =
+                      await CloudSyncService.showProviderDialog(context);
+                  if (provider != null) {
+                    await cloudSyncService.setupAutoSync(context, provider);
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cloud_upload),
+                title: const Text('Sincronizza ora con OneDrive'),
+                subtitle: const Text('Carica dati su OneDrive'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await cloudSyncService.syncWithOneDrive(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cloud_upload),
+                title: const Text('Sincronizza ora con Google Drive'),
+                subtitle: const Text('Carica dati su Google Drive'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await cloudSyncService.syncWithGoogleDrive(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cloud_download),
+                title: const Text('Ripristina da Cloud'),
+                subtitle: const Text('Carica dati dal cloud'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  await cloudSyncService.restoreFromCloud(context);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Chiudi'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final now = DateTime.now();
-    final transactions = ref.watch(transactionsProvider);
+    final transactionsAsync = ref.watch(transactionsProvider);
+
+    // Gestisci stati di loading e error
+    if (transactionsAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (transactionsAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento: ${transactionsAsync.error}'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final transactions = transactionsAsync.value ?? [];
     final filtered = transactions.where((t) {
       if (_period == 'Mese') {
         return t.date.month == _selectedMonth + 1 &&
@@ -123,8 +201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return t.date.year == _selectedYear;
       }
     }).toList();
-    print(
-        '[DEBUG] Home build: periodo=$_period, mese=${_selectedMonth + 1}, anno=$_selectedYear, transazioni filtrate=${transactions.length} su ${filtered.length}');
+
     final entrate = filtered
         .where((t) => t.amount > 0)
         .fold<double>(0, (s, t) => s + t.amount);
@@ -146,7 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'import') {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -156,11 +233,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CategoriesScreen()),
                 );
+              } else if (value == 'backup') {
+                final databaseService = DatabaseService();
+                final backupService = BackupService(databaseService);
+                BackupService.showBackupDialog(context, backupService);
               } else if (value == 'seed') {
-                ref.read(transactionsProvider.notifier).seedMockData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dati di esempio caricati!')),
-                );
+                final databaseService = DatabaseService();
+                final seedService = SeedDataService(databaseService);
+                await seedService.seedTestData();
+
+                // Forza l'aggiornamento per mostrare subito i dati di test
+                ref.invalidate(transactionsProvider);
+                ref.invalidate(snapshotProvider);
+                ref.invalidate(recurringRulesProvider);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Dati di test inseriti con successo!'),
+                    ),
+                  );
+                }
+              } else if (value == 'cloud_sync') {
+                _showCloudSyncDialog(context);
               }
             },
             itemBuilder: (context) => [
@@ -185,12 +280,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               const PopupMenuItem(
+                value: 'backup',
+                child: Row(
+                  children: [
+                    Icon(Icons.backup, size: 20),
+                    SizedBox(width: 8),
+                    Text('Backup & Ripristino'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'seed',
                 child: Row(
                   children: [
-                    Icon(Icons.bolt, size: 20),
+                    Icon(Icons.data_array, size: 20),
                     SizedBox(width: 8),
-                    Text('Seed data'),
+                    Text('Dati di Test'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'cloud_sync',
+                child: Row(
+                  children: [
+                    Icon(Icons.cloud_sync, size: 20),
+                    SizedBox(width: 8),
+                    Text('Sincronizzazione Cloud'),
                   ],
                 ),
               ),
@@ -203,6 +318,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Widget stato sincronizzazione
+            const SyncStatusWidget(),
             // PeriodSegmented
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -611,8 +728,29 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categories = ref.watch(categoriesProvider);
-    final transactions = ref.watch(transactionsProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final transactionsAsync = ref.watch(transactionsProvider);
+
+    // Gestisci stati di loading e error
+    if (transactionsAsync.isLoading || categoriesAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (transactionsAsync.hasError || categoriesAsync.hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text('Errore nel caricamento'),
+          ],
+        ),
+      );
+    }
+
+    final categories = categoriesAsync.value ?? [];
+    final transactions = transactionsAsync.value ?? [];
     List<Transaction> filtered = transactions;
     if (widget.period == 'Mese') {
       filtered = transactions

@@ -18,7 +18,31 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categories = ref.watch(categoriesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    // Gestisci stati di loading e error
+    if (categoriesAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (categoriesAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento: ${categoriesAsync.error}'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final categories = categoriesAsync.value ?? [];
     final filteredCategories = categories
         .where((c) => c.type == _selectedType)
         .toList()
@@ -141,8 +165,10 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
             child: const Text('Annulla'),
           ),
           TextButton(
-            onPressed: () {
-              ref.read(categoriesProvider.notifier).deleteCategory(category.id);
+            onPressed: () async {
+              await ref
+                  .read(categoriesNotifierProvider.notifier)
+                  .delete(category.id);
               Navigator.of(context).pop();
             },
             child: const Text('Elimina'),

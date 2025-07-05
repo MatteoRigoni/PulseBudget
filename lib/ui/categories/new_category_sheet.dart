@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/categories_provider.dart';
 import '../../model/category.dart';
+import 'package:uuid/uuid.dart';
 
 class NewCategorySheet extends ConsumerStatefulWidget {
   final String type;
@@ -203,7 +204,7 @@ class _NewCategorySheetState extends ConsumerState<NewCategorySheet> {
     super.dispose();
   }
 
-  void _saveCategory() {
+  Future<void> _saveCategory() async {
     if (_formKey.currentState!.validate()) {
       final category = Category(
         id: '${widget.type}-${DateTime.now().millisecondsSinceEpoch}',
@@ -213,7 +214,7 @@ class _NewCategorySheetState extends ConsumerState<NewCategorySheet> {
         type: widget.type,
       );
 
-      ref.read(categoriesProvider.notifier).addCategory(category);
+      await ref.read(categoriesNotifierProvider.notifier).add(category);
       widget.onSaved();
       Navigator.of(context).pop();
     }
@@ -263,7 +264,7 @@ class _NewCategorySheetState extends ConsumerState<NewCategorySheet> {
                         child: const Text('Annulla'),
                       ),
                       FilledButton(
-                        onPressed: _saveCategory,
+                        onPressed: () async => await _saveCategory(),
                         child: const Text('Salva'),
                       ),
                     ],

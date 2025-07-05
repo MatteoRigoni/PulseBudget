@@ -1,184 +1,123 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/transaction.dart';
 import '../model/payment_type.dart';
+import '../repository/transaction_repository.dart';
+import 'repository_providers.dart';
 
-class TransactionsNotifier extends StateNotifier<List<Transaction>> {
-  TransactionsNotifier() : super([]);
+/// Provider per tutte le transazioni (StreamProvider)
+final transactionsProvider = StreamProvider<List<Transaction>>((ref) {
+  final repository = ref.watch(transactionRepositoryProvider);
+  return repository.watchAll();
+});
 
-  void add(Transaction transaction) {
-    state = [...state, transaction];
-  }
+/// Provider per le transazioni filtrate per periodo
+final transactionsByPeriodProvider =
+    StreamProvider.family<List<Transaction>, ({DateTime start, DateTime end})>(
+        (ref, period) {
+  final repository = ref.watch(transactionRepositoryProvider);
+  return repository.watchByPeriod(period.start, period.end);
+});
 
-  void remove(String id) {
-    state = state.where((t) => t.id != id).toList();
-  }
+/// Provider per la ricerca transazioni per descrizione
+final transactionsSearchProvider =
+    StreamProvider.family<List<Transaction>, String>((ref, query) {
+  final repository = ref.watch(transactionRepositoryProvider);
+  return repository.searchByDescription(query);
+});
 
-  void updateTransaction(Transaction transaction) {
-    state = state.map((t) => t.id == transaction.id ? transaction : t).toList();
-  }
-
-  void clear() {
-    state = [];
-  }
-
-  void seedMockData() {
-    if (state.isNotEmpty) return; // Non inizializzare se ci sono già dati
-
-    final now = DateTime.now();
-    state = [
-      Transaction(
-        amount: -45.50,
-        date: now.subtract(const Duration(days: 2)),
-        description: 'Spesa supermercato',
-        categoryId: 'expense-food',
-        paymentType: PaymentType.creditCard,
-      ),
-      Transaction(
-        amount: -15.00,
-        date: now.subtract(const Duration(days: 1)),
-        description: 'Benzina',
-        categoryId: 'expense-transport',
-        paymentType: PaymentType.bancomat,
-      ),
-      Transaction(
-        amount: 1200.00,
-        date: now.subtract(const Duration(days: 5)),
-        description: 'Stipendio',
-        categoryId: 'income-salary',
-        paymentType: PaymentType.bankTransfer,
-      ),
-      Transaction(
-        amount: -60.00,
-        date: now.subtract(const Duration(days: 3)),
-        description: 'Cena fuori',
-        categoryId: 'expense-food',
-        paymentType: PaymentType.creditCard,
-      ),
-      Transaction(
-        amount: -80.00,
-        date: now.subtract(const Duration(days: 4)),
-        description: 'Shopping online',
-        categoryId: 'expense-shopping',
-        paymentType: PaymentType.creditCard,
-      ),
-      Transaction(
-        amount: 200.00,
-        date: now.subtract(const Duration(days: 10)),
-        description: 'Regalo compleanno',
-        categoryId: 'income-gift',
-        paymentType: PaymentType.cash,
-      ),
-      Transaction(
-        amount: -100.00,
-        date: now.subtract(const Duration(days: 7)),
-        description: 'Bollette luce',
-        categoryId: 'expense-bills',
-        paymentType: PaymentType.bankTransfer,
-      ),
-      Transaction(
-        amount: -30.00,
-        date: now.subtract(const Duration(days: 6)),
-        description: 'Cinema',
-        categoryId: 'expense-entertainment',
-        paymentType: PaymentType.cash,
-      ),
-      Transaction(
-        amount: 350.00,
-        date: now.subtract(const Duration(days: 12)),
-        description: 'Freelance',
-        categoryId: 'income-freelance',
-        paymentType: PaymentType.bankTransfer,
-      ),
-      // Nuove categorie spese mese corrente
-      Transaction(
-        amount: -22.00,
-        date: now.subtract(const Duration(days: 2)),
-        description: 'Farmacia',
-        categoryId: 'expense-health',
-        paymentType: PaymentType.cash,
-      ),
-      Transaction(
-        amount: -75.00,
-        date: now.subtract(const Duration(days: 5)),
-        description: 'Materiale scolastico',
-        categoryId: 'expense-education',
-        paymentType: PaymentType.creditCard,
-      ),
-      Transaction(
-        amount: -210.00,
-        date: now.subtract(const Duration(days: 8)),
-        description: 'Riparazione casa',
-        categoryId: 'expense-home',
-        paymentType: PaymentType.bankTransfer,
-      ),
-      Transaction(
-        amount: -55.00,
-        date: now.subtract(const Duration(days: 4)),
-        description: 'Concerto',
-        categoryId: 'expense-entertainment',
-        paymentType: PaymentType.creditCard,
-      ),
-    ];
-  }
-
-  // Metodi di utilità per calcoli
-  double get totalIncome {
-    return state
-        .where((t) => t.amount > 0)
-        .fold(0.0, (sum, transaction) => sum + transaction.amount);
-  }
-
-  double get totalExpenses {
-    return state
-        .where((t) => t.amount < 0)
-        .fold(0.0, (sum, transaction) => sum + transaction.amount.abs());
-  }
-
-  double get balance {
-    return state.fold(0.0, (sum, transaction) => sum + transaction.amount);
-  }
-
-  // Filtra per periodo
-  List<Transaction> getTransactionsForPeriod(DateTime start, DateTime end) {
-    return state.where((transaction) {
-      return transaction.date
-              .isAfter(start.subtract(const Duration(days: 1))) &&
-          transaction.date.isBefore(end.add(const Duration(days: 1)));
-    }).toList();
-  }
-
-  // Filtra per mese e anno
-  List<Transaction> getTransactionsForMonth(int month, int year) {
-    return state.where((transaction) {
-      return transaction.date.month == month && transaction.date.year == year;
-    }).toList();
-  }
-}
-
-// Provider principale per le transazioni
-final transactionsProvider =
-    StateNotifierProvider<TransactionsNotifier, List<Transaction>>(
-  (ref) => TransactionsNotifier(),
-);
-
-// Provider per il saldo totale
+/// Provider per il saldo totale
 final balanceProvider = Provider<double>((ref) {
-  final transactions = ref.watch(transactionsProvider);
+  final transactions = ref.watch(transactionsProvider).value ?? [];
   return transactions.fold(0.0, (sum, transaction) => sum + transaction.amount);
 });
 
-// Provider per le entrate totali
+/// Provider per le entrate totali
 final incomeProvider = Provider<double>((ref) {
-  final transactions = ref.watch(transactionsProvider);
+  final transactions = ref.watch(transactionsProvider).value ?? [];
   return transactions
       .where((t) => t.amount > 0)
       .fold(0.0, (sum, transaction) => sum + transaction.amount);
 });
 
-// Provider per le uscite totali
+/// Provider per le uscite totali
 final expensesProvider = Provider<double>((ref) {
-  final transactions = ref.watch(transactionsProvider);
+  final transactions = ref.watch(transactionsProvider).value ?? [];
   return transactions
       .where((t) => t.amount < 0)
       .fold(0.0, (sum, transaction) => sum + transaction.amount.abs());
+});
+
+/// Provider per le transazioni del mese corrente
+final currentMonthTransactionsProvider = Provider<List<Transaction>>((ref) {
+  final transactions = ref.watch(transactionsProvider).value ?? [];
+  final now = DateTime.now();
+  return transactions.where((transaction) {
+    return transaction.date.month == now.month &&
+        transaction.date.year == now.year;
+  }).toList();
+});
+
+/// Provider per le transazioni del mese precedente
+final previousMonthTransactionsProvider = Provider<List<Transaction>>((ref) {
+  final transactions = ref.watch(transactionsProvider).value ?? [];
+  final now = DateTime.now();
+  final previousMonth = DateTime(now.year, now.month - 1);
+  return transactions.where((transaction) {
+    return transaction.date.month == previousMonth.month &&
+        transaction.date.year == previousMonth.year;
+  }).toList();
+});
+
+/// Notifier per le operazioni CRUD delle transazioni
+class TransactionsNotifier extends StateNotifier<AsyncValue<void>> {
+  final TransactionRepository _repository;
+
+  TransactionsNotifier(this._repository) : super(const AsyncValue.data(null));
+
+  Future<void> add(Transaction transaction) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.add(transaction);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> update(Transaction transaction) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.update(transaction);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> delete(String id) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.delete(id);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> addBatch(List<Transaction> transactions) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.addBatch(transactions);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+}
+
+/// Provider per le operazioni CRUD delle transazioni
+final transactionsNotifierProvider =
+    StateNotifierProvider<TransactionsNotifier, AsyncValue<void>>((ref) {
+  final repository = ref.watch(transactionRepositoryProvider);
+  return TransactionsNotifier(repository);
 });

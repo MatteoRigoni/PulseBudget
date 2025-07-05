@@ -13,14 +13,38 @@ class PatrimonioScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final entities = ref.watch(entityProvider);
     final selectedEntityId = ref.watch(selectedEntityProvider);
-    final snapshots = ref
-        .watch(snapshotProvider)
+    final snapshotsAsync = ref.watch(snapshotProvider);
+
+    // Gestisci stati di loading e error
+    if (snapshotsAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (snapshotsAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Errore nel caricamento: ${snapshotsAsync.error}'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final snapshots = snapshotsAsync.value ?? [];
+    final filteredSnapshots = snapshots
         .where((s) =>
             s.label ==
             (entities.firstWhereOrNull((e) => e.id == selectedEntityId)?.name ??
                 ''))
         .toList();
-    final notifier = ref.read(snapshotProvider.notifier);
+
     final entityNotifier = ref.read(entityProvider.notifier);
     final setSelectedEntity = ref.read(selectedEntityProvider.notifier);
 
@@ -31,11 +55,12 @@ class PatrimonioScreen extends ConsumerWidget {
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
-            onSelected: (value) {
+            onSelected: (value) async {
+              // TODO: Implementare ordinamento con Firestore
               if (value == 'date') {
-                notifier.sortByDateDesc();
+                // notifier.sortByDateDesc();
               } else if (value == 'amount') {
-                notifier.sortByAmountDesc();
+                // notifier.sortByAmountDesc();
               }
             },
             itemBuilder: (context) => [
@@ -293,15 +318,19 @@ class PatrimonioScreen extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        onDismissed: (direction) {
-                          notifier.remove(snapshot.id);
+                        onDismissed: (direction) async {
+                          await ref
+                              .read(snapshotNotifierProvider.notifier)
+                              .remove(snapshot.id);
                           ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: const Text('Rilevazione eliminata'),
                               action: SnackBarAction(
                                 label: 'Ripristina',
-                                onPressed: () => notifier.undoRemove(),
+                                onPressed: () async {
+                                  // TODO: Implementare undo con Firestore
+                                },
                               ),
                               duration: const Duration(seconds: 3),
                             ),
@@ -310,15 +339,19 @@ class PatrimonioScreen extends ConsumerWidget {
                         child: SnapshotCard(
                           snapshot: snapshot,
                           previous: prev,
-                          onDelete: () {
-                            notifier.remove(snapshot.id);
+                          onDelete: () async {
+                            await ref
+                                .read(snapshotNotifierProvider.notifier)
+                                .remove(snapshot.id);
                             ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: const Text('Rilevazione eliminata'),
                                 action: SnackBarAction(
                                   label: 'Ripristina',
-                                  onPressed: () => notifier.undoRemove(),
+                                  onPressed: () async {
+                                    // TODO: Implementare undo con Firestore
+                                  },
                                 ),
                                 duration: const Duration(seconds: 3),
                               ),

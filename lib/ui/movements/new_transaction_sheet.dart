@@ -29,6 +29,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _focusNode = FocusNode();
 
   DateTime _selectedDate = DateTime.now();
   PaymentType _selectedPaymentType = PaymentType.cash;
@@ -57,25 +58,44 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
+    _focusNode.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
-  void _saveTransaction() {
+  Future<void> _saveTransaction() async {
     if (_formKey.currentState!.validate()) {
       final amount = double.parse(_amountController.text.replaceAll(',', '.'));
       final finalAmount = widget.isIncome ? amount : -amount;
 
+      // Ottieni la descrizione: se vuota, usa il nome della categoria
+      String description = _descriptionController.text.trim();
+      if (description.isEmpty && _selectedCategoryId != null) {
+        final allCategoriesAsync = ref.read(categoriesProvider);
+        final allCategories = allCategoriesAsync.value ?? [];
+        final selectedCategory = allCategories.firstWhere(
+          (cat) => cat.id == _selectedCategoryId,
+          orElse: () => Category(
+            id: 'default',
+            name: 'Altro',
+            icon: Icons.category_outlined,
+            colorHex: '#BDBDBD',
+            type: 'expense',
+          ),
+        );
+        description = selectedCategory.name;
+      }
+
       final transaction = Transaction(
         amount: finalAmount,
         date: _selectedDate,
-        description: _descriptionController.text.trim(),
+        description: description,
         categoryId: _selectedCategoryId ?? 'default',
         paymentType: _selectedPaymentType,
       );
 
       // Aggiungi la transazione al provider
-      ref.read(transactionsProvider.notifier).add(transaction);
+      await ref.read(transactionsNotifierProvider.notifier).add(transaction);
 
       // Chiudi la sheet
       Navigator.of(context).pop();
@@ -114,7 +134,8 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
     );
 
     // Ottieni le categorie dal provider
-    final allCategories = ref.watch(categoriesProvider);
+    final allCategoriesAsync = ref.watch(categoriesProvider);
+    final allCategories = allCategoriesAsync.value ?? [];
     final filteredCategories = allCategories
         .where((cat) =>
             widget.isIncome ? cat.type == 'income' : cat.type == 'expense')
@@ -196,6 +217,9 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                     // Campo Categoria (meno alto)
                     GestureDetector(
                       onTap: () async {
+                        // Chiudi la tastiera se è aperta
+                        FocusScope.of(context).unfocus();
+
                         String search = '';
                         final selected = await showModalBottomSheet<Category>(
                           context: context,
@@ -274,8 +298,12 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                           12)),
-                                              onTap: () => Navigator.of(context)
-                                                  .pop(cat),
+                                              onTap: () {
+                                                // Chiudi la tastiera e il modal
+                                                FocusScope.of(context)
+                                                    .unfocus();
+                                                Navigator.of(context).pop(cat);
+                                              },
                                               trailing: selected
                                                   ? const Icon(Icons.check,
                                                       color: Colors.green)
@@ -293,6 +321,10 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                         );
                         if (selected != null) {
                           setState(() => _selectedCategoryId = selected.id);
+                          // Passa il focus al campo successivo (importo)
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            FocusScope.of(context).requestFocus(_focusNode);
+                          });
                         }
                       },
                       child: Container(
@@ -351,6 +383,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                     // Amount Field
                     TextFormField(
                       controller: _amountController,
+                      focusNode: _focusNode,
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [
