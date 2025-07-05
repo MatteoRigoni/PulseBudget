@@ -76,8 +76,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
-                      IconData(category.iconCodePoint,
-                          fontFamily: 'MaterialIcons'),
+                      category.icon,
                       color: color,
                       size: 22,
                     ),
@@ -195,8 +194,7 @@ class _CategoryCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
-                        IconData(category.iconCodePoint,
-                            fontFamily: 'MaterialIcons'),
+                        category.icon,
                         color: color,
                         size: 22,
                       ),

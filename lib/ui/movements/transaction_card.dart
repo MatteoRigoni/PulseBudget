@@ -26,7 +26,7 @@ class TransactionCard extends ConsumerWidget {
           : Category(
               id: 'default',
               name: 'Altro',
-              iconCodePoint: Icons.category_outlined.codePoint,
+              icon: Icons.category_outlined,
               colorHex: '#BDBDBD',
               type: 'expense',
             ),

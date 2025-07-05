@@ -215,8 +215,7 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                                                 .replaceFirst('#', '0xff'))),
                                             radius: 24,
                                             child: Icon(
-                                              IconData(cat.iconCodePoint,
-                                                  fontFamily: 'MaterialIcons'),
+                                              cat.icon,
                                               color: Colors.white,
                                               size: 32,
                                             ),
@@ -274,8 +273,7 @@ class _NewRecurringRuleSheetState extends ConsumerState<NewRecurringRuleSheet> {
                                     cat.colorHex.replaceFirst('#', '0xff'))),
                                 radius: 20,
                                 child: Icon(
-                                  IconData(cat.iconCodePoint,
-                                      fontFamily: 'MaterialIcons'),
+                                  cat.icon,
                                   color: Colors.white,
                                   size: 28,
                                 ),
