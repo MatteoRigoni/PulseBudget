@@ -67,18 +67,6 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeApp() async {
     print('[DEBUG] Inizializzazione categorie default...');
 
-    try {
-      // Timeout di sicurezza - massimo 3 secondi
-      await Future.any([
-        _performInitialization(),
-        Future.delayed(const Duration(seconds: 3), () {
-          print('[WARNING] Timeout raggiunto, forzando la navigazione');
-        }),
-      ]);
-    } catch (e) {
-      print('[ERROR] Errore durante l\'inizializzazione: $e');
-    }
-
     print('[DEBUG] Inizializzazione completata, navigazione alla home...');
 
     // SEMPRE naviga alla home, anche se c'è un errore
