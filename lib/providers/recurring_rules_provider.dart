@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../model/recurring_rule.dart';
+import '../model/payment_type.dart';
 import 'dart:math';
 
 class RecurringRulesNotifier extends StateNotifier<List<RecurringRule>> {

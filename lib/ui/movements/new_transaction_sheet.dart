@@ -95,6 +95,7 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      locale: const Locale('it', 'IT'),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
@@ -167,38 +168,27 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Campo Data (spostato sopra)
-                    InkWell(
-                      onTap: _selectDate,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10), // meno alto
-                        decoration: BoxDecoration(
-                          border: Border.all(color: theme.colorScheme.outline),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_today,
-                                color: theme.colorScheme.primary, size: 20),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Data',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withOpacity(0.6),
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('dd/MM/yyyy')
-                                      .format(_selectedDate),
-                                  style: theme.textTheme.bodyLarge,
-                                ),
-                              ],
-                            ),
-                          ],
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: GestureDetector(
+                        onTap: _selectDate,
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Data',
+                            border: OutlineInputBorder(),
+                            fillColor: theme.colorScheme.surface,
+                            filled: true,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(_selectedDate),
+                                style: theme.textTheme.bodyLarge,
+                              ),
+                              const Icon(Icons.calendar_today, size: 18),
+                            ],
+                          ),
                         ),
                       ),
                     ),

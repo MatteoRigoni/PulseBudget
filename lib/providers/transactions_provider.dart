@@ -22,6 +22,8 @@ class TransactionsNotifier extends StateNotifier<List<Transaction>> {
   }
 
   void seedMockData() {
+    if (state.isNotEmpty) return; // Non inizializzare se ci sono già dati
+
     final now = DateTime.now();
     state = [
       Transaction(

@@ -172,8 +172,20 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
             if (filtered.isEmpty)
               Expanded(
                 child: Center(
-                  child: Text('Nessun movimento trovato',
-                      style: Theme.of(context).textTheme.bodyLarge),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.receipt_long,
+                          size: 64, color: Colors.amber.shade400),
+                      const SizedBox(height: 16),
+                      Text('Nessun movimento trovato!',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(color: Colors.grey.shade600)),
+                    ],
+                  ),
                 ),
               )
             else

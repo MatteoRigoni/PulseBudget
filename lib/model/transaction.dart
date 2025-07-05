@@ -9,6 +9,8 @@ class Transaction {
   final String descriptionLowercase;
   final String categoryId;
   final PaymentType paymentType;
+  final bool isRecurring;
+  final String? recurringRuleName;
 
   Transaction({
     String? id,
@@ -17,6 +19,8 @@ class Transaction {
     required this.description,
     required this.categoryId,
     required this.paymentType,
+    this.isRecurring = false,
+    this.recurringRuleName,
   })  : id = id ?? const Uuid().v4(),
         descriptionLowercase = description.toLowerCase();
 
@@ -31,6 +35,8 @@ class Transaction {
       paymentType: PaymentType.values.firstWhere(
         (e) => e.toString() == 'PaymentType.${json['paymentType']}',
       ),
+      isRecurring: json['isRecurring'] as bool? ?? false,
+      recurringRuleName: json['recurringRuleName'] as String?,
     );
   }
 
@@ -43,6 +49,8 @@ class Transaction {
       'description': description,
       'categoryId': categoryId,
       'paymentType': paymentType.toString().split('.').last,
+      'isRecurring': isRecurring,
+      'recurringRuleName': recurringRuleName,
     };
   }
 
@@ -54,6 +62,8 @@ class Transaction {
     String? description,
     String? categoryId,
     PaymentType? paymentType,
+    bool? isRecurring,
+    String? recurringRuleName,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -62,6 +72,8 @@ class Transaction {
       description: description ?? this.description,
       categoryId: categoryId ?? this.categoryId,
       paymentType: paymentType ?? this.paymentType,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurringRuleName: recurringRuleName ?? this.recurringRuleName,
     );
   }
 

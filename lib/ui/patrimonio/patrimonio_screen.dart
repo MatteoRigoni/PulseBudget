@@ -30,16 +30,6 @@ class PatrimonioScreen extends ConsumerWidget {
         title: const Text('Patrimonio'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            tooltip: 'Vai a Patrimonio',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (context) => const PatrimonioScreen()),
-              );
-            },
-          ),
           PopupMenuButton<String>(
             onSelected: (value) {
               if (value == 'date') {
@@ -217,8 +207,10 @@ class PatrimonioScreen extends ConsumerWidget {
                                     } else {
                                       entityNotifier.addEntity(
                                           type!, name!.trim());
-                                      setSelectedEntity.state =
-                                          ref.read(entityProvider).last.id;
+                                      try {
+                                        setSelectedEntity.state =
+                                            ref.read(entityProvider).last.id;
+                                      } catch (_) {}
                                       Navigator.of(ctx).pop();
                                     }
                                   }
@@ -236,82 +228,106 @@ class PatrimonioScreen extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: snapshots.length,
-              itemBuilder: (context, index) {
-                final snapshot = snapshots[index];
-                final prev = snapshots.skip(index + 1).firstWhereOrNull(
-                      (s) => s.label == snapshot.label,
-                    );
-                return Dismissible(
-                  key: ValueKey(snapshot.id),
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.only(left: 24),
-                    child: const Row(
+            child: snapshots.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.delete, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Elimina',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                        Icon(Icons.account_balance_wallet_outlined,
+                            size: 64, color: Colors.amber.shade400),
+                        const SizedBox(height: 16),
+                        Text('Nessuna rilevazione presente!',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(color: Colors.grey.shade600)),
                       ],
                     ),
-                  ),
-                  secondaryBackground: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 24),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text('Elimina',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
-                        SizedBox(width: 8),
-                        Icon(Icons.delete, color: Colors.white),
-                      ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: snapshots.length,
+                    separatorBuilder: (context, index) => Divider(
+                      height: 1,
+                      thickness: 0.7,
+                      color: Theme.of(context).dividerColor.withOpacity(0.7),
+                      indent: 16,
+                      endIndent: 16,
                     ),
-                  ),
-                  onDismissed: (direction) {
-                    notifier.remove(snapshot.id);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Rilevazione eliminata'),
-                        action: SnackBarAction(
-                          label: 'Ripristina',
-                          onPressed: () => notifier.undoRemove(),
-                        ),
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  },
-                  child: SnapshotCard(
-                    snapshot: snapshot,
-                    previous: prev,
-                    onDelete: () {
-                      notifier.remove(snapshot.id);
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Rilevazione eliminata'),
-                          action: SnackBarAction(
-                            label: 'Ripristina',
-                            onPressed: () => notifier.undoRemove(),
+                    itemBuilder: (context, index) {
+                      final snapshot = snapshots[index];
+                      final prev = snapshots.skip(index + 1).firstWhereOrNull(
+                            (s) => s.label == snapshot.label,
+                          );
+                      return Dismissible(
+                        key: ValueKey(snapshot.id),
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.only(left: 24),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.delete, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Elimina',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
+                            ],
                           ),
-                          duration: const Duration(seconds: 3),
+                        ),
+                        secondaryBackground: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 24),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('Elimina',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold)),
+                              SizedBox(width: 8),
+                              Icon(Icons.delete, color: Colors.white),
+                            ],
+                          ),
+                        ),
+                        onDismissed: (direction) {
+                          notifier.remove(snapshot.id);
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Rilevazione eliminata'),
+                              action: SnackBarAction(
+                                label: 'Ripristina',
+                                onPressed: () => notifier.undoRemove(),
+                              ),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        },
+                        child: SnapshotCard(
+                          snapshot: snapshot,
+                          previous: prev,
+                          onDelete: () {
+                            notifier.remove(snapshot.id);
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Rilevazione eliminata'),
+                                action: SnackBarAction(
+                                  label: 'Ripristina',
+                                  onPressed: () => notifier.undoRemove(),
+                                ),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          },
                         ),
                       );
                     },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),

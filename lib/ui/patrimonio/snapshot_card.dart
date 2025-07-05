@@ -29,14 +29,23 @@ class SnapshotCard extends StatelessWidget {
     }
     final isPositive = (delta ?? 0) >= 0;
     final deltaColor = isPositive ? Colors.green : Colors.red;
-    final deltaIcon = isPositive ? Icons.arrow_drop_up : Icons.arrow_drop_down;
+    final deltaIcon = isPositive ? Icons.trending_up : Icons.trending_down;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
       leading: CircleAvatar(
-        backgroundColor:
-            Theme.of(context).colorScheme.primary.withOpacity(0.13),
-        child: const Icon(Icons.account_balance_wallet_outlined,
-            color: Colors.blueGrey, size: 24),
+        backgroundColor: isPositive && delta != null && delta != 0
+            ? Colors.green.withOpacity(0.13)
+            : !isPositive && delta != null && delta != 0
+                ? Colors.red.withOpacity(0.13)
+                : Theme.of(context).colorScheme.primary.withOpacity(0.13),
+        child: (delta != null && delta != 0)
+            ? Icon(
+                isPositive ? Icons.trending_up : Icons.trending_down,
+                color: isPositive ? Colors.green : Colors.red,
+                size: 24,
+              )
+            : const Icon(Icons.account_balance_wallet_outlined,
+                color: Colors.blueGrey, size: 24),
       ),
       title: Text(
         amountStr,
@@ -72,28 +81,13 @@ class SnapshotCard extends StatelessWidget {
         ],
       ),
       trailing: (delta != null && delta != 0)
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Icon(deltaIcon, color: deltaColor, size: 20),
-                Text(
-                  '${isPositive ? '+' : ''}${NumberFormat.currency(locale: 'it_IT', symbol: '\u20ac').format(delta)}',
-                  style: TextStyle(
-                    color: deltaColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                if (deltaPerc != null)
-                  Text(
-                    '(${deltaPerc.toStringAsFixed(2)}%)',
-                    style: TextStyle(
-                      color: deltaColor.withOpacity(0.7),
-                      fontSize: 11,
-                    ),
-                  ),
-              ],
+          ? Text(
+              '${isPositive ? '+ ' : '- '}${NumberFormat.currency(locale: 'it_IT', symbol: '\u20ac').format(delta!.abs())}',
+              style: TextStyle(
+                color: deltaColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
             )
           : null,
     );

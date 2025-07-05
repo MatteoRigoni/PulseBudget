@@ -12,6 +12,7 @@ import '../report/analysis_sheet.dart';
 import '../categories/categories_screen.dart';
 import 'package:intl/intl.dart';
 import '../../providers/period_filter_provider.dart';
+import '../../providers/recurring_rules_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -67,7 +68,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
     _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
     _balanceAnimController.value = 1.0;
-    Future.microtask(() => ref.read(recurringBootstrapProvider));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Leggi i dati delle regole e transazioni
+      final rules = ref.read(recurringRulesProvider);
+      final transactions = ref.read(transactionsProvider);
+      final now = DateTime.now();
+      // Chiama il bootstrap (ricalcolo)
+      ref.read(recurringBootstrapProvider);
+      // Mostra uno SnackBar con i dati di debug
+      final msg = '[DEBUG] Ricalcolo ricorrenti\nnow: '
+          '${now.toIso8601String()}\n'
+          'rules: ${rules.length}\n'
+          'existingTransactions: ${transactions.length}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    });
   }
 
   @override
@@ -654,8 +673,7 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
                   Icon(Icons.emoji_objects,
                       size: 64, color: Colors.amber.shade400),
                   const SizedBox(height: 16),
-                  Text(
-                      'Nessuna spesa significativa!\nAggiungi la tua prima transazione.',
+                  Text('Nessuna transazione significativa!',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(color: Colors.grey.shade600)),

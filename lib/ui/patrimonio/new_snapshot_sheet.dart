@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../model/snapshot.dart';
 import '../../providers/snapshot_provider.dart';
 import 'package:collection/collection.dart';
+import '../home/home_screen.dart';
 
 class NewSnapshotSheet extends ConsumerStatefulWidget {
   const NewSnapshotSheet({Key? key}) : super(key: key);
@@ -48,7 +49,7 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
     final entities = ref.watch(entityProvider);
     final entityNotifier = ref.read(entityProvider.notifier);
     return FractionallySizedBox(
-      heightFactor: 0.7,
+      heightFactor: 0.55,
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
@@ -178,64 +179,48 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                InkWell(
-                  onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: _date,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (pickedDate != null) {
-                      setState(() {
-                        _date = DateTime(
-                          pickedDate.year,
-                          pickedDate.month,
-                          pickedDate.day,
-                        );
-                      });
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                          color: Theme.of(context).colorScheme.outline),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_today,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 20),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Data',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withOpacity(0.6),
-                                  ),
-                            ),
-                            Text(
-                              '${_date.day.toString().padLeft(2, '0')}/${_date.month.toString().padLeft(2, '0')}/${_date.year}',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ],
-                        ),
-                      ],
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: GestureDetector(
+                    onTap: () async {
+                      final pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: _date,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                        locale: const Locale('it', 'IT'),
+                      );
+                      if (pickedDate != null) {
+                        setState(() {
+                          _date = DateTime(
+                            pickedDate.year,
+                            pickedDate.month,
+                            pickedDate.day,
+                          );
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Data',
+                        border: OutlineInputBorder(),
+                        fillColor: Theme.of(context).colorScheme.surface,
+                        filled: true,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${_date.day.toString().padLeft(2, '0')}/${_date.month.toString().padLeft(2, '0')}/${_date.year}',
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const Icon(Icons.calendar_today, size: 18),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _amountController,
                   keyboardType:
@@ -255,7 +240,7 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
                   onSaved: (v) =>
                       _amount = double.tryParse(v!.replaceAll(',', '.')),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _noteController,
                   decoration: InputDecoration(
@@ -263,55 +248,52 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
                     labelStyle: Theme.of(context).textTheme.bodyMedium,
                     border: OutlineInputBorder(),
                   ),
-                  minLines: 2,
-                  maxLines: 4,
+                  maxLines: 1,
                   onSaved: (v) => _note = v,
                 ),
-                const SizedBox(height: 32),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text('Annulla'),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
+                        child: const Text('Annulla'),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              _formKey.currentState!.save();
-                              final entity = entities.firstWhereOrNull(
-                                  (e) => e.id == _selectedEntityId);
-                              if (entity == null) return;
-                              final snapshot = Snapshot(
-                                id: const Uuid().v4(),
-                                date: _date,
-                                label: entity.name,
-                                amount: _amount!,
-                                note: _noteController.text.isNotEmpty
-                                    ? _noteController.text
-                                    : null,
-                              );
-                              ref.read(snapshotProvider.notifier).add(snapshot);
-                              Navigator.of(context).pop();
-                            }
-                          },
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            textStyle: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          child: const Text('Salva'),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            _formKey.currentState!.save();
+                            final entity = entities.firstWhereOrNull(
+                                (e) => e.id == _selectedEntityId);
+                            if (entity == null) return;
+                            final snapshot = Snapshot(
+                              id: const Uuid().v4(),
+                              date: _date,
+                              label: entity.name,
+                              amount: _amount!,
+                              note: _noteController.text.isNotEmpty
+                                  ? _noteController.text
+                                  : null,
+                            );
+                            ref.read(snapshotProvider.notifier).add(snapshot);
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
                         ),
+                        child: const Text('Salva'),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),

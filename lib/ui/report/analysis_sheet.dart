@@ -99,7 +99,20 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
       ),
       body: Center(
         child: shown.isEmpty
-            ? Text('Nessun dato per il periodo selezionato')
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.bar_chart, size: 64, color: Colors.amber.shade400),
+                  const SizedBox(height: 16),
+                  Text(
+                      'Nessun dato per il periodo selezionato\nSeleziona un intervallo o aggiungi transazioni per vedere il grafico!',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: Colors.grey.shade600)),
+                ],
+              )
             : LayoutBuilder(
                 builder: (context, constraints) {
                   return Column(

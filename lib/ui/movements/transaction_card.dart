@@ -44,10 +44,40 @@ class TransactionCard extends ConsumerWidget {
       child: ListTile(
         isThreeLine: false,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        leading: iconWidget,
-        title: _highlightedText(transaction.description, highlight, theme),
+        leading: Stack(
+          children: [
+            iconWidget,
+            if (transaction.isRecurring)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.repeat,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: transaction.isRecurring && transaction.recurringRuleName != null
+            ? Text(
+                transaction.recurringRuleName!,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : _highlightedText(transaction.description, highlight, theme),
         subtitle: Text(
-          dateStr,
+          transaction.isRecurring
+              ? 'Frequenza: ${_getRecurringFrequencyText(transaction.description)}'
+              : dateStr,
           style: TextStyle(
             fontSize: 13,
             color: Colors.grey[700],
@@ -142,5 +172,18 @@ class TransactionCard extends ConsumerWidget {
           RegExp(r'\B(?=(\d{3})+(?!\d))'),
           (match) => '.',
         );
+  }
+
+  String _getRecurringFrequencyText(String description) {
+    if (description.contains('Mensile') || description.contains('/')) {
+      return 'mensile';
+    } else if (description.contains('Settimana')) {
+      return 'settimanale';
+    } else if (description.contains('Annuale') ||
+        description.contains('2024') ||
+        description.contains('2025')) {
+      return 'annuale';
+    }
+    return 'sconosciuta';
   }
 }

@@ -12,29 +12,38 @@ List<Transaction> generateDueRecurringTransactions({
   required DateTime now,
 }) {
   print('[DEBUG] generateDueRecurringTransactions called at: '
-      'now: \\${now.toIso8601String()}\\n'
-      'rules: \\${rules.length}\\n'
-      'existingTransactions: \\${existingTransactions.length}');
+      'now: ${now.toIso8601String()}\n'
+      'rules: ${rules.length}\n'
+      'existingTransactions: ${existingTransactions.length}');
 
   final List<Transaction> result = [];
   final DateTime twoMonthsAgo = DateTime(now.year, now.month - 2, 1);
 
   for (final rule in rules) {
+    print(
+        '[DEBUG] Analizzo regola: id=${rule.id}, rrule=${rule.rrule}, startDate=${rule.startDate.toIso8601String()}');
     // Calcola la data di partenza: max(startDate, due mesi fa)
     DateTime start =
         rule.startDate.isAfter(twoMonthsAgo) ? rule.startDate : twoMonthsAgo;
     DateTime? current = _firstOccurrenceOnOrAfter(rule, start);
     while (current != null && !current.isAfter(now)) {
+      print(
+          '[DEBUG] Occorrenza calcolata: ${current.toIso8601String()} per regola ${rule.id}');
       String transactionId = _transactionIdForRule(rule, current);
       final alreadyExists =
           existingTransactions.any((t) => t.id == transactionId);
       if (!alreadyExists) {
+        print(
+            '[DEBUG] Genero transazione ricorrente: id=$transactionId, data=${current.toIso8601String()}');
         result.add(_buildTransaction(
           rule,
           current,
           transactionId,
           '[Ricorrente] ${_descriptionForOccurrence(rule, current)}',
         ));
+      } else {
+        print(
+            '[DEBUG] Transazione già esistente per id=$transactionId, data=${current.toIso8601String()}');
       }
       current = _nextOccurrence(rule, current);
     }
@@ -59,6 +68,8 @@ Transaction _buildTransaction(
     paymentType: paymentType,
     date: date,
     description: description,
+    isRecurring: true,
+    recurringRuleName: rule.name,
   );
 }
 

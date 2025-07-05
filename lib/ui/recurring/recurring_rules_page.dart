@@ -2,35 +2,151 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/recurring_rules_provider.dart';
 import '../../model/recurring_rule.dart';
+import '../../model/category.dart';
 import 'new_recurring_rule_sheet.dart';
+import '../../providers/recurring_bootstrap_provider.dart';
+import '../../providers/transactions_provider.dart';
+import '../../providers/categories_provider.dart';
 
 class RecurringRulesPage extends ConsumerWidget {
   const RecurringRulesPage({Key? key}) : super(key: key);
 
+  String _getFrequencyText(String rrule) {
+    if (rrule.startsWith('FREQ=MONTHLY')) {
+      return 'Mensile';
+    } else if (rrule.startsWith('FREQ=WEEKLY')) {
+      return 'Settimanale';
+    } else if (rrule.startsWith('FREQ=YEARLY')) {
+      return 'Annuale';
+    }
+    return 'Sconosciuta';
+  }
+
+  String _getCategoryName(String categoryId, List<Category> categories) {
+    try {
+      return categories.firstWhere((c) => c.id == categoryId).name;
+    } catch (_) {
+      return categoryId;
+    }
+  }
+
+  IconData _getCategoryIcon(String categoryId, List<Category> categories) {
+    try {
+      return categories.firstWhere((c) => c.id == categoryId).icon;
+    } catch (_) {
+      return Icons.category_outlined;
+    }
+  }
+
+  Color _getCategoryColor(String categoryId, List<Category> categories) {
+    try {
+      return categories.firstWhere((c) => c.id == categoryId).color;
+    } catch (_) {
+      return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rules = ref.watch(recurringRulesProvider);
+    final categories = ref.watch(categoriesProvider);
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         title: const Text('Ricorrenti'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Ricalcola ricorrenti',
+            onPressed: () {
+              // Leggi i dati delle regole e transazioni
+              final rules = ref.read(recurringRulesProvider);
+              final transactions = ref.read(transactionsProvider);
+              final now = DateTime.now();
+              // Forza il ricalcolo delle ricorrenze
+              executeRecurringBootstrapFromWidget(ref);
+              // Mostra messaggio di debug
+              final msg = '[DEBUG] Ricalcolo ricorrenti\nnow: '
+                  '${now.toIso8601String()}\n'
+                  'rules: ${rules.length}\n'
+                  'existingTransactions: ${transactions.length}';
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(msg),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            },
+          ),
+        ],
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: rules.length,
-        separatorBuilder: (_, __) => const Divider(height: 1, thickness: 0.5),
-        itemBuilder: (context, index) {
-          final rule = rules[index];
-          return ListTile(
-            leading: const Icon(Icons.repeat),
-            title: Text(rule.categoryId), // Da sostituire con nome categoria
-            subtitle: Text('Frequenza: Mensile'), // Da estrarre da rrule
-            trailing: Text(
-                '${rule.amount > 0 ? '+' : ''} ${rule.amount.toStringAsFixed(2)}'),
-            onLongPress: () => _showDeleteDialog(context, ref, rule),
-          );
-        },
-      ),
+      body: rules.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.repeat, size: 64, color: Colors.amber.shade400),
+                  const SizedBox(height: 16),
+                  Text('Nessuna regola ricorrente!',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: Colors.grey.shade600)),
+                ],
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: rules.length,
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, thickness: 0.5),
+              itemBuilder: (context, index) {
+                final rule = rules[index];
+                return Dismissible(
+                  key: Key(rule.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    color: Colors.red,
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onDismissed: (direction) {
+                    ref
+                        .read(recurringRulesProvider.notifier)
+                        .removeRule(rule.id);
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Regola eliminata'),
+                        action: SnackBarAction(
+                          label: 'Ripristina',
+                          onPressed: () {
+                            // TODO: Implementare ripristino
+                          },
+                        ),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                  child: ListTile(
+                    leading: Icon(
+                      _getCategoryIcon(rule.categoryId, categories),
+                      color: _getCategoryColor(rule.categoryId, categories),
+                    ),
+                    title: Text(rule.name),
+                    subtitle:
+                        Text('Frequenza: ${_getFrequencyText(rule.rrule)}'),
+                    trailing: Text(
+                        '${rule.amount > 0 ? '+' : ''} ${rule.amount.toStringAsFixed(2)}'),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FilledButton.icon(
         onPressed: () => _showNewRuleSheet(context),
         icon: const Icon(Icons.add),
@@ -54,30 +170,6 @@ class RecurringRulesPage extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const NewRecurringRuleSheet(),
-    );
-  }
-
-  void _showDeleteDialog(
-      BuildContext context, WidgetRef ref, RecurringRule rule) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Elimina regola ricorrente'),
-        content: const Text('Sei sicuro di voler eliminare questa regola?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annulla'),
-          ),
-          TextButton(
-            onPressed: () {
-              ref.read(recurringRulesProvider.notifier).removeRule(rule.id);
-              Navigator.of(context).pop();
-            },
-            child: const Text('Elimina'),
-          ),
-        ],
-      ),
     );
   }
 }
