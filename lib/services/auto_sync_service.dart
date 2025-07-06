@@ -8,7 +8,7 @@ class AutoSyncService {
   final DatabaseService _databaseService;
   final CloudSyncService _cloudSyncService;
   bool _isEnabled = false;
-  CloudProvider? _configuredProvider;
+  int _backupInterval = 30; // giorni
 
   AutoSyncService(this._databaseService)
       : _cloudSyncService = CloudSyncService(_databaseService) {
@@ -18,129 +18,91 @@ class AutoSyncService {
   // Carica configurazione salvata
   Future<void> _loadConfiguration() async {
     final prefs = await SharedPreferences.getInstance();
-    _isEnabled = prefs.getBool('auto_sync_enabled') ?? false;
-
-    final providerString = prefs.getString('auto_sync_provider');
-    if (providerString != null) {
-      _configuredProvider = CloudProvider.values.firstWhere(
-        (p) => p.toString() == providerString,
-        orElse: () => CloudProvider.oneDrive,
-      );
-    }
+    _isEnabled = prefs.getBool('auto_backup_enabled') ?? false;
+    _backupInterval = await _cloudSyncService.getAutoBackupInterval();
   }
 
-  // Abilita sincronizzazione automatica
-  Future<void> enableAutoSync(CloudProvider provider) async {
+  // Abilita backup automatico
+  Future<void> enableAutoBackup({int intervalDays = 30}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('auto_sync_enabled', true);
-    await prefs.setString('auto_sync_provider', provider.toString());
+    await prefs.setBool('auto_backup_enabled', true);
 
     _isEnabled = true;
-    _configuredProvider = provider;
+    _backupInterval = intervalDays;
+
+    await _cloudSyncService.setAutoBackupInterval(intervalDays);
   }
 
-  // Disabilita sincronizzazione automatica
-  Future<void> disableAutoSync() async {
+  // Disabilita backup automatico
+  Future<void> disableAutoBackup() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('auto_sync_enabled', false);
+    await prefs.setBool('auto_backup_enabled', false);
 
     _isEnabled = false;
-    _configuredProvider = null;
   }
 
-  // Verifica se è abilitata
+  // Imposta intervallo di backup
+  Future<void> setBackupInterval(int days) async {
+    _backupInterval = days;
+    await _cloudSyncService.setAutoBackupInterval(days);
+  }
+
+  // Ottieni intervallo di backup
+  int get backupInterval => _backupInterval;
+
+  // Verifica se è abilitato
   bool get isEnabled => _isEnabled;
 
-  // Ottieni provider configurato
-  CloudProvider? get configuredProvider => _configuredProvider;
-
-  // Sincronizza automaticamente (chiamato dopo modifiche)
-  Future<void> syncIfEnabled() async {
-    if (!_isEnabled || _configuredProvider == null) return;
+  // Esegue backup automatico se necessario
+  Future<void> performBackupIfNeeded() async {
+    if (!_isEnabled) return;
 
     try {
-      // Verifica se ci sono modifiche locali
-      if (await _cloudSyncService.hasLocalChanges()) {
-        // Sincronizza con il provider configurato
-        switch (_configuredProvider!) {
-          case CloudProvider.oneDrive:
-            // Nota: qui dovremmo passare un context, ma per ora usiamo un approccio diverso
-            await _syncWithProvider(CloudProvider.oneDrive);
-            break;
-          case CloudProvider.googleDrive:
-            await _syncWithProvider(CloudProvider.googleDrive);
-            break;
-          case CloudProvider.dropbox:
-            await _syncWithProvider(CloudProvider.dropbox);
-            break;
-          case CloudProvider.iCloud:
-            await _syncWithProvider(CloudProvider.iCloud);
-            break;
-          case CloudProvider.custom:
-            await _syncWithProvider(CloudProvider.custom);
-            break;
-        }
+      // Verifica se è necessario fare il backup (basato su intervallo)
+      if (await _cloudSyncService.shouldAutoBackup()) {
+        await _cloudSyncService.performAutoBackup();
       }
     } catch (e) {
       // Log dell'errore ma non bloccare l'app
-      print('Errore sincronizzazione automatica: $e');
+      print('Errore backup automatico: $e');
     }
   }
 
-  // Sincronizza con provider specifico
-  Future<void> _syncWithProvider(CloudProvider provider) async {
-    // Esporta dati correnti
-    final data = await _databaseService.exportData();
+  // Forza backup (ignora intervallo)
+  Future<void> forceBackup() async {
+    if (!_isEnabled) return;
 
-    // Salva timestamp sincronizzazione
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(
-        'last_sync_timestamp', DateTime.now().millisecondsSinceEpoch);
-
-    // Log della sincronizzazione
-    print(
-        'Sincronizzazione automatica completata con ${_getProviderName(provider)}');
-  }
-
-  String _getProviderName(CloudProvider provider) {
-    switch (provider) {
-      case CloudProvider.oneDrive:
-        return 'OneDrive';
-      case CloudProvider.googleDrive:
-        return 'Google Drive';
-      case CloudProvider.dropbox:
-        return 'Dropbox';
-      case CloudProvider.iCloud:
-        return 'iCloud';
-      case CloudProvider.custom:
-        return 'Cloud Personalizzato';
+    try {
+      await _cloudSyncService.performAutoBackup();
+    } catch (e) {
+      print('Errore backup forzato: $e');
     }
   }
 
-  // Ottieni stato sincronizzazione
-  Future<Map<String, dynamic>> getSyncStatus() async {
+  // Ottieni stato backup
+  Future<Map<String, dynamic>> getBackupStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    final lastSync = prefs.getInt('last_sync_timestamp');
+    final lastBackup = prefs.getInt('last_auto_backup_timestamp');
 
     return {
       'enabled': _isEnabled,
-      'provider': _configuredProvider?.toString(),
-      'lastSync': lastSync != null
-          ? DateTime.fromMillisecondsSinceEpoch(lastSync)
+      'interval': _backupInterval,
+      'lastBackup': lastBackup != null
+          ? DateTime.fromMillisecondsSinceEpoch(lastBackup)
           : null,
-      'hasChanges': await _cloudSyncService.hasLocalChanges(),
+      'shouldBackup': await _cloudSyncService.shouldAutoBackup(),
     };
   }
 }
 
-// Provider per il servizio di sincronizzazione automatica
+// Provider per il servizio di backup automatico
 final autoSyncServiceProvider = Provider<AutoSyncService>((ref) {
   final databaseService = ref.watch(databaseServiceProvider);
   return AutoSyncService(databaseService);
 });
 
-// Provider per lo stato di sincronizzazione
+// Provider per lo stato di backup
 final syncStatusProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final autoSyncService = ref.watch(autoSyncServiceProvider);
-  return await autoSyncService.getSyncStatus();
+  return await autoSyncService.getBackupStatus();
 });

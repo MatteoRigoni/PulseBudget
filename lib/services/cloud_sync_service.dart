@@ -9,30 +9,40 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'database_service.dart';
 import 'package:flutter/material.dart';
-
-enum CloudProvider { oneDrive, googleDrive, dropbox, iCloud, custom }
+import '../main.dart';
 
 class CloudSyncService {
   final DatabaseService _databaseService;
-  static const String _syncFileName = 'bilanciome_sync.json';
-  static const String _lastSyncKey = 'last_sync_timestamp';
+  static const String _syncFileName = 'bilanciome_backup.json';
+  static const String _lastSyncKey = 'last_auto_backup_timestamp';
+  static const String _syncIntervalKey = 'auto_backup_interval_days';
 
   CloudSyncService(this._databaseService);
 
-  // Verifica se ci sono modifiche locali
-  Future<bool> hasLocalChanges() async {
-    final lastSync = await _getLastSyncTime();
-    final dbPath = await _getDatabasePath();
-    final dbFile = File(dbPath);
+  // Verifica se è necessario fare il backup automatico (basato su intervallo)
+  Future<bool> shouldAutoBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    final intervalDays = prefs.getInt(_syncIntervalKey) ?? 30;
+    final lastBackup = await _getLastSyncTime();
+    final now = DateTime.now();
 
-    if (!await dbFile.exists()) return false;
-
-    final lastModified = dbFile.lastModifiedSync();
-    return lastModified.isAfter(lastSync);
+    return now.difference(lastBackup).inDays >= intervalDays;
   }
 
-  // Sincronizza con OneDrive
-  Future<void> syncWithOneDrive(BuildContext context) async {
+  // Ottieni intervallo di backup automatico configurato
+  Future<int> getAutoBackupInterval() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_syncIntervalKey) ?? 30;
+  }
+
+  // Imposta intervallo di backup automatico
+  Future<void> setAutoBackupInterval(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_syncIntervalKey, days);
+  }
+
+  // Esegue backup automatico
+  Future<void> performAutoBackup() async {
     try {
       // 1. Esporta dati correnti
       final data = await _databaseService.exportData();
@@ -41,145 +51,102 @@ class CloudSyncService {
       // 2. Salva file temporaneo
       final tempFile = await _saveTempFile(jsonString);
 
-      // 3. Condividi con OneDrive
+      // 3. Apre menu di condivisione con spiegazione
       await Share.shareXFiles(
         [XFile(tempFile.path)],
-        text: 'BilancioMe - Backup automatico ${DateTime.now().toString()}',
-        subject: 'BilancioMe Sync',
+        text:
+            'BilancioMe - Backup automatico ${DateTime.now().toString()}\n\nQuesto backup è stato generato automaticamente per mantenere i tuoi dati al sicuro. Puoi salvarlo nel cloud, inviarlo via email o archiviarlo localmente.',
+        subject: 'BilancioMe - Backup Automatico',
       );
 
-      // 4. Aggiorna timestamp sincronizzazione
+      // 4. Aggiorna timestamp backup
       await _updateLastSyncTime();
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sincronizzazione con OneDrive completata!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      print('Backup automatico completato');
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore sincronizzazione: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      print('Errore backup automatico: $e');
     }
   }
 
-  // Sincronizza con Google Drive
-  Future<void> syncWithGoogleDrive(BuildContext context) async {
-    try {
-      // 1. Esporta dati correnti
-      final data = await _databaseService.exportData();
-      final jsonString = jsonEncode(data);
+  // Verifica se il backup automatico è attivo
+  Future<bool> isAutoBackupEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('auto_backup_enabled') ?? false;
+  }
 
-      // 2. Salva file temporaneo
-      final tempFile = await _saveTempFile(jsonString);
+  // Abilita backup automatico
+  Future<void> enableAutoBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auto_backup_enabled', true);
 
-      // 3. Condividi con Google Drive
-      await Share.shareXFiles(
-        [XFile(tempFile.path)],
-        text: 'BilancioMe - Backup automatico ${DateTime.now().toString()}',
-        subject: 'BilancioMe Sync',
+    if (navigatorKey.currentContext != null) {
+      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+        const SnackBar(
+          content: Text('Backup automatico attivato'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      // 4. Aggiorna timestamp sincronizzazione
-      await _updateLastSyncTime();
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sincronizzazione con Google Drive completata!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore sincronizzazione: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
   }
 
-  // Ripristina da file cloud
-  Future<void> restoreFromCloud(BuildContext context) async {
-    try {
-      // 1. Richiedi permessi
-      final status = await Permission.storage.request();
-      if (!status.isGranted) {
-        throw Exception('Permessi di accesso ai file non concessi');
-      }
+  // Disabilita backup automatico
+  Future<void> disableAutoBackup() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auto_backup_enabled', false);
 
-      // 2. Apri file picker per selezionare file di backup
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-        allowMultiple: false,
+    if (navigatorKey.currentContext != null) {
+      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+        const SnackBar(
+          content: Text('Backup automatico disabilitato'),
+          backgroundColor: Colors.orange,
+        ),
       );
+    }
+  }
 
-      if (result != null && result.files.isNotEmpty) {
-        final file = File(result.files.first.path!);
-        final jsonString = await file.readAsString();
-        final data = jsonDecode(jsonString) as Map<String, dynamic>;
+  // Esegue backup automatico se necessario (chiamato all'avvio app)
+  Future<void> performAutoBackupIfNeeded(BuildContext context) async {
+    try {
+      final isEnabled = await isAutoBackupEnabled();
+      if (!isEnabled) return;
 
-        // 3. Ripristina dati
-        await _databaseService.importData(data);
+      final shouldBackup = await shouldAutoBackup();
+      if (shouldBackup) {
+        await performAutoBackup();
 
-        // 4. Aggiorna timestamp sincronizzazione
-        await _updateLastSyncTime();
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+        if (navigatorKey.currentContext != null) {
+          ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
             const SnackBar(
-              content: Text('Ripristino da cloud completato!'),
+              content: Text('Backup automatico completato'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
             ),
           );
         }
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore ripristino: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      print('Errore backup automatico: $e');
     }
   }
 
-  // Configurazione automatica
-  Future<void> setupAutoSync(
-      BuildContext context, CloudProvider provider) async {
-    // Mostra dialog per configurazione
-    await showDialog(
-      context: context,
+  // Mostra dialog per configurare backup automatico
+  static Future<void> showAutoBackupConfigDialog(BuildContext context) async {
+    return showDialog(
+      context: navigatorKey.currentContext!,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Sincronizzazione automatica',
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-          content: Column(
+          title: const Text('Backup Automatico'),
+          content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Cloud: ${_getProviderName(provider)}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 12),
-              const Text(
-                'I dati verranno salvati automaticamente nel cloud ogni volta che li modifichi.',
+              Text(
+                'Il backup automatico creerà un file di backup ogni 30 giorni e ti permetterà di scegliere dove salvarlo (cloud, email, locale, ecc.).',
                 style: TextStyle(fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Questo ti aiuta a mantenere i tuoi dati al sicuro senza dover ricordarti di fare backup manuali.',
+                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
               ),
             ],
           ),
@@ -191,7 +158,9 @@ class CloudSyncService {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _enableAutoSync(provider, context);
+                final databaseService = DatabaseService();
+                final cloudSyncService = CloudSyncService(databaseService);
+                await cloudSyncService.enableAutoBackup();
               },
               child: const Text('Attiva'),
             ),
@@ -199,67 +168,6 @@ class CloudSyncService {
         );
       },
     );
-  }
-
-  // Abilita sincronizzazione automatica
-  Future<void> _enableAutoSync(
-      CloudProvider provider, BuildContext context) async {
-    try {
-      // Salva configurazione
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('auto_sync_provider', provider.toString());
-      await prefs.setBool('auto_sync_enabled', true);
-
-      // Prima sincronizzazione
-      switch (provider) {
-        case CloudProvider.oneDrive:
-          await syncWithOneDrive(context);
-          break;
-        case CloudProvider.googleDrive:
-          await syncWithGoogleDrive(context);
-          break;
-        default:
-          throw Exception('Provider non supportato');
-      }
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Sincronizzazione automatica attivata con ${_getProviderName(provider)}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore configurazione: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  // Verifica se la sincronizzazione automatica è attiva
-  Future<bool> isAutoSyncEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('auto_sync_enabled') ?? false;
-  }
-
-  // Ottieni provider configurato
-  Future<CloudProvider?> getConfiguredProvider() async {
-    final prefs = await SharedPreferences.getInstance();
-    final providerString = prefs.getString('auto_sync_provider');
-    if (providerString != null) {
-      return CloudProvider.values.firstWhere(
-        (p) => p.toString() == providerString,
-        orElse: () => CloudProvider.oneDrive,
-      );
-    }
-    return null;
   }
 
   // Metodi di utilità
@@ -286,68 +194,5 @@ class CloudSyncService {
   Future<void> _updateLastSyncTime() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_lastSyncKey, DateTime.now().millisecondsSinceEpoch);
-  }
-
-  String _getProviderName(CloudProvider provider) {
-    switch (provider) {
-      case CloudProvider.oneDrive:
-        return 'OneDrive';
-      case CloudProvider.googleDrive:
-        return 'Google Drive';
-      case CloudProvider.dropbox:
-        return 'Dropbox';
-      case CloudProvider.iCloud:
-        return 'iCloud';
-      case CloudProvider.custom:
-        return 'Cloud Personalizzato';
-    }
-  }
-
-  // Mostra dialog per scegliere provider
-  static Future<CloudProvider?> showProviderDialog(BuildContext context) async {
-    return showDialog<CloudProvider>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Scegli Cloud Storage'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.cloud, color: Colors.blue),
-                title: const Text('OneDrive'),
-                subtitle: const Text('Microsoft'),
-                onTap: () => Navigator.of(context).pop(CloudProvider.oneDrive),
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud, color: Colors.green),
-                title: const Text('Google Drive'),
-                subtitle: const Text('Google'),
-                onTap: () =>
-                    Navigator.of(context).pop(CloudProvider.googleDrive),
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud, color: Colors.blue),
-                title: const Text('Dropbox'),
-                subtitle: const Text('Dropbox Inc.'),
-                onTap: () => Navigator.of(context).pop(CloudProvider.dropbox),
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud, color: Colors.grey),
-                title: const Text('iCloud'),
-                subtitle: const Text('Apple'),
-                onTap: () => Navigator.of(context).pop(CloudProvider.iCloud),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annulla'),
-            ),
-          ],
-        );
-      },
-    );
   }
 }

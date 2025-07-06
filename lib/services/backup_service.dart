@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:restart_app/restart_app.dart';
 import 'database_service.dart';
 import 'cloud_sync_service.dart';
 
@@ -146,6 +147,48 @@ class BackupService {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.schedule),
+                title: const Text('Backup automatico'),
+                subtitle: const Text('Crea backup ogni 30 giorni'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final databaseService = DatabaseService();
+                  final cloudSyncService = CloudSyncService(databaseService);
+
+                  // Controlla se è già attivo
+                  final isEnabled =
+                      await cloudSyncService.isAutoBackupEnabled();
+                  if (isEnabled) {
+                    // Mostra opzioni per disabilitare
+                    final action = await showDialog<String>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Backup Automatico'),
+                        content: const Text(
+                            'Il backup automatico è già attivo. Vuoi disabilitarlo?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop('cancel'),
+                            child: const Text('Annulla'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(ctx).pop('disable'),
+                            child: const Text('Disabilita'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (action == 'disable') {
+                      await cloudSyncService.disableAutoBackup();
+                    }
+                  } else {
+                    // Configura nuovo backup automatico
+                    await CloudSyncService.showAutoBackupConfigDialog(context);
+                  }
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.upload_file),
                 title: const Text('Carica backup'),
                 subtitle: const Text('Ripristina da file JSON'),
@@ -154,10 +197,34 @@ class BackupService {
                   try {
                     await backupService.loadBackupFromFile();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Backup caricato con successo')),
+                      // Mostra alert di conferma per riavviare l'app
+                      final shouldRestart = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Backup ripristinato'),
+                            content: const Text(
+                              'Il backup è stato caricato con successo. L\'app deve essere riavviata per applicare le modifiche. Vuoi riavviare ora?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Più tardi'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: const Text('Riavvia ora'),
+                              ),
+                            ],
+                          );
+                        },
                       );
+
+                      if (shouldRestart == true) {
+                        Restart.restartApp();
+                      }
                     }
                   } catch (e) {
                     if (context.mounted) {
@@ -189,21 +256,6 @@ class BackupService {
                         SnackBar(content: Text('Errore: $e')),
                       );
                     }
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud_sync),
-                title: const Text('Backup automatico'),
-                subtitle: const Text('Remoto su OneDrive/Google Drive'),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  final databaseService = DatabaseService();
-                  final cloudSyncService = CloudSyncService(databaseService);
-                  final provider =
-                      await CloudSyncService.showProviderDialog(context);
-                  if (provider != null) {
-                    await cloudSyncService.setupAutoSync(context, provider);
                   }
                 },
               ),

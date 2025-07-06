@@ -10,22 +10,30 @@ import 'ui/report/analysis_sheet.dart';
 import 'ui/patrimonio/patrimonio_screen.dart';
 import 'services/database_service.dart';
 import 'services/seed_data_service.dart';
+import 'services/cloud_sync_service.dart';
 import 'providers/recurring_bootstrap_provider.dart';
 import 'repository/recurring_scheduler.dart';
 import 'providers/transactions_provider.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<_MainNavigationScreenState> mainNavKey =
+    GlobalKey<_MainNavigationScreenState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   print('[DEBUG] ===== APP STARTING =====');
 
+  // Inizializza il database e le categorie default in modo sincrono
+  await _initializeDatabase();
+
   // Avvia l'app direttamente
   runApp(const ProviderScope(child: PulseBudgetApp()));
 }
 
-void _initializeInBackground() async {
+Future<void> _initializeDatabase() async {
   try {
-    print('[DEBUG] Inizializzazione in background...');
+    print('[DEBUG] Inizializzazione database...');
 
     final databaseService = DatabaseService();
     final categories = await databaseService.getCategories();
@@ -68,6 +76,7 @@ class PulseBudgetApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'BilancioMe',
       theme: ThemeData.light(useMaterial3: true),
       darkTheme: ThemeData.dark(useMaterial3: true),
@@ -82,13 +91,19 @@ class PulseBudgetApp extends StatelessWidget {
         Locale('it', 'IT'),
         Locale('en', 'US'),
       ],
-      home: const MainNavigationScreen(),
+      home: MainNavigationScreen(key: mainNavKey),
     );
   }
 }
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
+
+  static GlobalKey<_MainNavigationScreenState> get globalKey => mainNavKey;
+
+  static void goToPatrimonioTab() {
+    globalKey.currentState?._goToPatrimonio();
+  }
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
@@ -104,6 +119,67 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     AnalysisSheet(),
     const RecurringRulesPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPatrimonyReminderInApp();
+    _checkAutoSync();
+  }
+
+  void _goToPatrimonio() {
+    setState(() {
+      _selectedIndex = 2;
+    });
+  }
+
+  Future<void> _checkPatrimonyReminderInApp() async {
+    final databaseService = DatabaseService();
+    final snapshots = await databaseService.getSnapshots();
+    if (snapshots.isEmpty) return;
+
+    // Ordina per data decrescente
+    snapshots.sort((a, b) => b.date.compareTo(a.date));
+    final lastSnapshot = snapshots.first;
+    final now = DateTime.now();
+    final diff = now.difference(lastSnapshot.date);
+
+    // Per test: usa 1 minuto, per produzione usa 90 giorni
+    const testMode = false;
+    final threshold = testMode ? Duration(minutes: 1) : Duration(days: 90);
+
+    if (diff > threshold) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Patrimonio'),
+            content: const Text(
+                'Non registri una rilevazione da oltre 3 mesi. Vuoi andare alla sezione?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Annulla'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _goToPatrimonio();
+                },
+                child: const Text('Vai a Patrimonio'),
+              ),
+            ],
+          ),
+        );
+      });
+    }
+  }
+
+  Future<void> _checkAutoSync() async {
+    final databaseService = DatabaseService();
+    final cloudSyncService = CloudSyncService(databaseService);
+    await cloudSyncService.performAutoBackupIfNeeded(context);
+  }
 
   @override
   Widget build(BuildContext context) {

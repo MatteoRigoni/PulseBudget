@@ -485,27 +485,30 @@ class PatrimonioScreen extends ConsumerWidget {
                 ),
               ],
             ),
-      floatingActionButton: FilledButton.icon(
-        onPressed: () async {
-          await showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const NewSnapshotSheet(),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Nuova rilevazione'),
-        style: FilledButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          textStyle: Theme.of(context).textTheme.labelLarge,
-          elevation: 8,
-        ),
-      ),
+      floatingActionButton: entities.isEmpty
+          ? null
+          : FilledButton.icon(
+              onPressed: () async {
+                await showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const NewSnapshotSheet(),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Nuova rilevazione'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                textStyle: Theme.of(context).textTheme.labelLarge,
+                elevation: 8,
+              ),
+            ),
     );
   }
 }
