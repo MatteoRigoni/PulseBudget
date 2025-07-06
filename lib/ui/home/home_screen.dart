@@ -39,6 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   int _selectedMonth = 0;
   int _selectedYear = DateTime.now().year;
   bool _isRefreshing = false;
+  bool _hasInitialized = false;
 
   late AnimationController _balanceAnimController;
   late Animation<double> _balanceScale;
@@ -79,9 +80,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
     _balanceAnimController.value = 1.0;
 
-    // Esegui il bootstrap delle ricorrenti all'avvio
+    // Esegui il bootstrap delle ricorrenti all'avvio (solo una volta)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      executeRecurringBootstrapFromWidget(ref);
+      if (!_hasInitialized) {
+        _hasInitialized = true;
+        executeRecurringBootstrapFromWidget(ref);
+      }
     });
   }
 
@@ -115,11 +119,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     });
 
     try {
-      // Invalida i provider per forzare il reload
-      //ref.invalidate(transactionsProvider);
-
-      // Attendi un po' per permettere l'aggiornamento
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Trigger aggiornamento provider tramite operazione fittizia
+      final databaseService = DatabaseService();
+      await databaseService.triggerProviderUpdate();
 
       // Mostra popup di conferma
       if (mounted) {
@@ -528,7 +530,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 onTapDown: (_) => _balanceAnimController.reverse(),
                 onTapUp: (_) => _balanceAnimController.forward(),
                 onTapCancel: () => _balanceAnimController.forward(),
-                //onTap: _refreshData,
+                onTap: _refreshData,
                 child: ScaleTransition(
                   scale: _balanceScale,
                   child: Container(

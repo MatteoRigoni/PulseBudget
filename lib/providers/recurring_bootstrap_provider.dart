@@ -5,6 +5,7 @@ import '../repository/recurring_scheduler.dart';
 import '../services/database_service.dart';
 import 'transactions_provider.dart';
 import 'categories_provider.dart';
+import 'repository_providers.dart';
 
 void executeRecurringBootstrap(ProviderRef ref) async {
   print('[DEBUG] ===== BOOTSTRAP PROVIDER CHIAMATO =====');
@@ -87,8 +88,7 @@ void executeRecurringBootstrapFromWidget(WidgetRef ref) async {
       print('[DEBUG] Nessuna nuova transazione ricorrente da generare');
     }
     // Invalida il provider delle transazioni per forzare il reload
-    //ref.invalidate(transactionsProvider);
-    print('[DEBUG] ===== BOOTSTRAP PROVIDER COMPLETATO =====');
+    //ref.invalidate(transactionsProvider);    print('[DEBUG] ===== BOOTSTRAP PROVIDER COMPLETATO =====');
   } catch (e) {
     print('[ERROR] Errore durante il bootstrap delle ricorrenti: $e');
   }
@@ -130,6 +130,7 @@ void executeRecurringBootstrapSimple() async {
     } else {
       print('[DEBUG] Nessuna nuova transazione ricorrente da generare');
     }
+
     print('[DEBUG] ===== BOOTSTRAP SIMPLE COMPLETATO =====');
   } catch (e) {
     print('[ERROR] Errore durante il bootstrap delle ricorrenti: $e');

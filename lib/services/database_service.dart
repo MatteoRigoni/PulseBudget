@@ -357,6 +357,23 @@ class DatabaseService {
     await db.delete('entities', where: 'id = ?', whereArgs: [id]);
   }
 
+  // Metodo per triggerare l'aggiornamento dei provider
+  Future<void> triggerProviderUpdate() async {
+    final db = await database;
+    // Fai un'operazione fittizia che triggera l'aggiornamento
+    // Aggiorna un record esistente con gli stessi valori
+    final categories = await db.query('categories', limit: 1);
+    if (categories.isNotEmpty) {
+      final category = categories.first;
+      await db.update(
+        'categories',
+        category,
+        where: 'id = ?',
+        whereArgs: [category['id']],
+      );
+    }
+  }
+
   // Backup e restore
   Future<Map<String, dynamic>> exportData() async {
     final db = await database;
