@@ -42,6 +42,8 @@ void executeRecurringBootstrap(ProviderRef ref) async {
     } else {
       print('[DEBUG] Nessuna nuova transazione ricorrente da generare');
     }
+    // Invalida il provider delle transazioni per forzare il reload
+    //ref.invalidate(transactionsProvider);
     print('[DEBUG] ===== BOOTSTRAP PROVIDER COMPLETATO =====');
   } catch (e) {
     print('[ERROR] Errore durante il bootstrap delle ricorrenti: $e');
@@ -84,6 +86,8 @@ void executeRecurringBootstrapFromWidget(WidgetRef ref) async {
     } else {
       print('[DEBUG] Nessuna nuova transazione ricorrente da generare');
     }
+    // Invalida il provider delle transazioni per forzare il reload
+    //ref.invalidate(transactionsProvider);
     print('[DEBUG] ===== BOOTSTRAP PROVIDER COMPLETATO =====');
   } catch (e) {
     print('[ERROR] Errore durante il bootstrap delle ricorrenti: $e');

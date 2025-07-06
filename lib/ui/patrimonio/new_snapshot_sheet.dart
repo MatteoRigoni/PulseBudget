@@ -154,11 +154,11 @@ class _NewSnapshotSheetState extends ConsumerState<NewSnapshotSheet> {
                                           .labelLarge),
                                 ),
                                 TextButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (type != null &&
                                         name != null &&
                                         name!.trim().isNotEmpty) {
-                                      entityNotifier.addEntity(
+                                      await entityNotifier.addEntity(
                                           type!, name!.trim());
                                       setState(() => _selectedEntityId =
                                           ref.read(entityProvider).last.id);

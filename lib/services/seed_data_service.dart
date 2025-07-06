@@ -364,6 +364,7 @@ class SeedDataService {
       await txn.delete('categories');
       await txn.delete('snapshots');
       await txn.delete('recurring_rules');
+      await txn.delete('entities');
     });
   }
 }

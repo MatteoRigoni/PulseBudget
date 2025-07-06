@@ -4,6 +4,7 @@ import '../repository/balance_repository.dart';
 import 'repository_providers.dart';
 import 'dart:collection';
 import 'package:uuid/uuid.dart';
+import '../services/database_service.dart';
 
 /// Provider per tutti gli snapshot (StreamProvider)
 final snapshotProvider = StreamProvider<List<Snapshot>>((ref) {
@@ -73,29 +74,59 @@ final snapshotNotifierProvider =
   return SnapshotNotifier(repository);
 });
 
-// Provider per le entità (mantenuto come prima per ora)
+// Provider per le entità
 class EntityNotifier extends StateNotifier<List<Entity>> {
-  EntityNotifier() : super([]);
+  final DatabaseService _databaseService;
 
-  void addEntity(String type, String name) {
+  EntityNotifier(this._databaseService) : super([]) {
+    _loadEntities();
+  }
+
+  Future<void> _loadEntities() async {
+    try {
+      final entitiesData = await _databaseService.getEntities();
+      final entities = entitiesData
+          .map((data) => Entity(
+                id: data['id'] as String,
+                type: data['type'] as String,
+                name: data['name'] as String,
+              ))
+          .toList();
+      state = entities;
+    } catch (e) {
+      print('Error loading entities: $e');
+      state = [];
+    }
+  }
+
+  Future<void> addEntity(String type, String name) async {
     final normalized = (String s) => s.trim().toLowerCase();
     final exists = state.any((e) =>
         normalized(e.type) == normalized(type) &&
         normalized(e.name) == normalized(name));
     if (exists) return;
-    state = [
-      ...state,
-      Entity(id: const Uuid().v4(), type: type, name: name),
-    ];
+
+    final entity = Entity(id: const Uuid().v4(), type: type, name: name);
+    try {
+      await _databaseService.insertEntity(entity.id, entity.type, entity.name);
+      state = [...state, entity];
+    } catch (e) {
+      print('Error adding entity: $e');
+    }
   }
 
-  void removeEntity(String id) {
-    state = state.where((e) => e.id != id).toList();
+  Future<void> removeEntity(String id) async {
+    try {
+      await _databaseService.deleteEntity(id);
+      state = state.where((e) => e.id != id).toList();
+    } catch (e) {
+      print('Error removing entity: $e');
+    }
   }
 }
 
 final entityProvider = StateNotifierProvider<EntityNotifier, List<Entity>>(
-    (ref) => EntityNotifier());
+    (ref) => EntityNotifier(DatabaseService()));
 
 final selectedEntityProvider = StateProvider<String?>((ref) {
   final entities = ref.watch(entityProvider);

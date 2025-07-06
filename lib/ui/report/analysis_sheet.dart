@@ -481,8 +481,7 @@ class _PatrimonyBarChart extends StatelessWidget {
     final barGroups = sortedSnapshots.asMap().entries.map((entry) {
       final index = entry.key;
       final snapshot = entry.value;
-      final total = snapshot.accounts
-          .fold<double>(0, (sum, account) => sum + account.balance);
+      final total = snapshot.amount;
 
       return BarChartGroupData(
         x: index,
@@ -504,8 +503,7 @@ class _PatrimonyBarChart extends StatelessWidget {
 
     // Trova il valore massimo per la scala Y
     final maxValue = sortedSnapshots.fold<double>(0, (max, snapshot) {
-      final total = snapshot.accounts
-          .fold<double>(0, (sum, account) => sum + account.balance);
+      final total = snapshot.amount;
       return total.abs() > max ? total.abs() : max;
     });
 
@@ -522,8 +520,7 @@ class _PatrimonyBarChart extends StatelessWidget {
               tooltipRoundedRadius: 8,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final snapshot = sortedSnapshots[group.x];
-                final total = snapshot.accounts
-                    .fold<double>(0, (sum, account) => sum + account.balance);
+                final total = snapshot.amount;
                 final date = DateFormat('dd/MM/yyyy').format(snapshot.date);
                 return BarTooltipItem(
                   '$date\n',

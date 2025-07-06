@@ -21,6 +21,7 @@ import '../../services/cloud_sync_service.dart';
 import '../../services/auto_sync_service.dart';
 import '../widgets/sync_status_widget.dart';
 import '../widgets/app_title_widget.dart';
+import '../../providers/recurring_bootstrap_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -37,6 +38,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _period = 'Mese';
   int _selectedMonth = 0;
   int _selectedYear = DateTime.now().year;
+  bool _isRefreshing = false;
 
   late AnimationController _balanceAnimController;
   late Animation<double> _balanceScale;
@@ -76,6 +78,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
     _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
     _balanceAnimController.value = 1.0;
+
+    // Esegui il bootstrap delle ricorrenti all'avvio
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      executeRecurringBootstrapFromWidget(ref);
+    });
   }
 
   @override
@@ -97,6 +104,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         },
       ),
     );
+  }
+
+  void _refreshData() async {
+    // Evita chiamate multiple mentre è già in esecuzione
+    if (_isRefreshing) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      // Invalida i provider per forzare il reload
+      //ref.invalidate(transactionsProvider);
+
+      // Attendi un po' per permettere l'aggiornamento
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Mostra popup di conferma
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Dati aggiornati'), duration: Duration(seconds: 2)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Errore durante l\'aggiornamento: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
   }
 
   void _showCloudSyncDialog(BuildContext context) async {
@@ -335,6 +382,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     _period = s.first;
                     print('[DEBUG] Cambiato periodo: $_period');
                   });
+
+                  // Se si passa a 'Mese', aggiorna la selezione al mese corrente
+                  if (_period == 'Mese') {
+                    final now = DateTime.now();
+                    _selectedYear = now.year;
+                    _selectedMonth = now.month - 1;
+
+                    // Scrolla alla fine della lista (mese corrente)
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _monthScrollController.animateTo(
+                        _monthScrollController.position.maxScrollExtent,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    });
+                  }
+
                   // Aggiorna il filtro globale
                   final periodFilter = ref.read(periodFilterProvider.notifier);
                   periodFilter.state = PeriodFilter(
@@ -342,15 +406,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     month: _selectedMonth + 1,
                     year: _selectedYear,
                   );
-                  // Se si passa a 'Mese', scrolla la lista mesi sul selezionato
-                  if (_period == 'Mese') {
-                    final idx = _monthsList.indexWhere((d) =>
-                        d.year == _selectedYear &&
-                        d.month == _selectedMonth + 1);
-                    if (idx >= 0) {
-                      _monthScrollController.jumpTo(idx * 84.0);
-                    }
-                  }
                 },
               ),
             ),
@@ -473,6 +528,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 onTapDown: (_) => _balanceAnimController.reverse(),
                 onTapUp: (_) => _balanceAnimController.forward(),
                 onTapCancel: () => _balanceAnimController.forward(),
+                //onTap: _refreshData,
                 child: ScaleTransition(
                   scale: _balanceScale,
                   child: Container(
@@ -505,7 +561,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       children: [
                         Row(
                           children: [
-                            // Chip con solo immagine assets
+                            // Chip con solo immagine assets o icona refresh
                             Container(
                               width: 38,
                               height: 32,
@@ -514,10 +570,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               clipBehavior: Clip.hardEdge,
-                              child: Image.asset(
-                                'assets/chip.jpg',
-                                fit: BoxFit.cover,
-                              ),
+                              child: _isRefreshing
+                                  ? Container(
+                                      color: Colors.amber.shade700,
+                                      child: const Icon(
+                                        Icons.refresh,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      'assets/chip.jpg',
+                                      fit: BoxFit.cover,
+                                    ),
                             ),
                             const Spacer(),
                             Column(

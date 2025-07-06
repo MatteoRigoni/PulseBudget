@@ -20,7 +20,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -76,6 +76,15 @@ class DatabaseService {
         rrule TEXT NOT NULL,
         startDate TEXT NOT NULL,
         FOREIGN KEY (categoryId) REFERENCES categories (id)
+      )
+    ''');
+
+    // Tabella account/entità
+    await db.execute('''
+      CREATE TABLE entities (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT NOT NULL
       )
     ''');
 
@@ -157,6 +166,31 @@ class DatabaseService {
 
         // Ricrea gli indici
         await db.execute('CREATE INDEX idx_snapshots_date ON snapshots(date)');
+      } catch (e) {
+        print('Migration error: $e');
+      }
+    }
+
+    if (oldVersion < 3) {
+      // Migrazione da versione 2 a 3: aggiungi tabella entities
+      try {
+        await db.execute('''
+          CREATE TABLE entities (
+            id TEXT PRIMARY KEY,
+            type TEXT NOT NULL,
+            name TEXT NOT NULL
+          )
+        ''');
+
+        // Inserisci account di default se non esistono entità
+        final entities = await db.query('entities');
+        if (entities.isEmpty) {
+          await db.insert('entities', {
+            'id': 'default-account',
+            'type': 'Conto',
+            'name': 'Conto Corrente',
+          });
+        }
       } catch (e) {
         print('Migration error: $e');
       }
@@ -286,6 +320,43 @@ class DatabaseService {
     await db.delete('recurring_rules', where: 'id = ?', whereArgs: [id]);
   }
 
+  // Metodi per le entità/account
+  Future<List<Map<String, dynamic>>> getEntities() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'entities',
+      orderBy: 'name',
+    );
+    return maps;
+  }
+
+  Future<void> insertEntity(String id, String type, String name) async {
+    final db = await database;
+    await db.insert('entities', {
+      'id': id,
+      'type': type,
+      'name': name,
+    });
+  }
+
+  Future<void> updateEntity(String id, String type, String name) async {
+    final db = await database;
+    await db.update(
+      'entities',
+      {
+        'type': type,
+        'name': name,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteEntity(String id) async {
+    final db = await database;
+    await db.delete('entities', where: 'id = ?', whereArgs: [id]);
+  }
+
   // Backup e restore
   Future<Map<String, dynamic>> exportData() async {
     final db = await database;
@@ -293,12 +364,14 @@ class DatabaseService {
     final categories = await db.query('categories');
     final snapshots = await db.query('snapshots');
     final recurringRules = await db.query('recurring_rules');
+    final entities = await db.query('entities');
 
     return {
       'transactions': transactions,
       'categories': categories,
       'snapshots': snapshots,
       'recurring_rules': recurringRules,
+      'entities': entities,
       'export_date': DateTime.now().toIso8601String(),
       'version': '1.0.0',
     };
@@ -312,6 +385,7 @@ class DatabaseService {
       await txn.delete('categories');
       await txn.delete('snapshots');
       await txn.delete('recurring_rules');
+      await txn.delete('entities');
 
       // Importa nuovi dati
       for (final category in data['categories']) {
@@ -325,6 +399,11 @@ class DatabaseService {
       }
       for (final rule in data['recurring_rules']) {
         await txn.insert('recurring_rules', rule);
+      }
+      if (data['entities'] != null) {
+        for (final entity in data['entities']) {
+          await txn.insert('entities', entity);
+        }
       }
     });
   }

@@ -19,9 +19,6 @@ void main() async {
 
   print('[DEBUG] ===== APP STARTING =====');
 
-  // Inizializza tutto in background
-  _initializeInBackground();
-
   // Avvia l'app direttamente
   runApp(const ProviderScope(child: PulseBudgetApp()));
 }

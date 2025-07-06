@@ -105,8 +105,8 @@ class PatrimonioScreen extends ConsumerWidget {
                                 child: const Text('Annulla'),
                               ),
                               TextButton(
-                                onPressed: () {
-                                  entityNotifier.removeEntity(entity.id);
+                                onPressed: () async {
+                                  await entityNotifier.removeEntity(entity.id);
                                   if (selectedEntityId == entity.id &&
                                       entities.length > 1) {
                                     setSelectedEntity.state = entities
@@ -211,7 +211,7 @@ class PatrimonioScreen extends ConsumerWidget {
                                 child: const Text('Annulla'),
                               ),
                               TextButton(
-                                onPressed: () {
+                                onPressed: () async {
                                   if (type != null &&
                                       name != null &&
                                       name!.trim().isNotEmpty) {
@@ -231,7 +231,7 @@ class PatrimonioScreen extends ConsumerWidget {
                                                 'Account già esistente con stesso tipo e nome')),
                                       );
                                     } else {
-                                      entityNotifier.addEntity(
+                                      await entityNotifier.addEntity(
                                           type!, name!.trim());
                                       try {
                                         setSelectedEntity.state =

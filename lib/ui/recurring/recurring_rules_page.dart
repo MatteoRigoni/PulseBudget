@@ -89,14 +89,14 @@ class RecurringRulesPage extends ConsumerWidget {
               // Forza il ricalcolo delle ricorrenze usando il notifier (come nella versione vecchia)
               executeRecurringBootstrapFromWidget(ref);
 
-              // Mostra messaggio di debug
-              final msg =
-                  'Ricalcolo ricorrenti completato alle: ${now.toIso8601String()}';
+              // Invalida il provider delle transazioni per forzare il reload
+              //ref.invalidate(transactionsProvider);
+
+              // Mostra popup di conferma
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(msg),
-                  duration: const Duration(seconds: 4),
-                ),
+                    content: const Text('Movimenti ricorrenti aggiornati'),
+                    duration: const Duration(seconds: 2)),
               );
             },
           ),
