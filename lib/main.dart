@@ -55,7 +55,8 @@ void _initializeInBackground() async {
         await databaseService.insertTransaction(transaction);
       }
       print(
-          '[DEBUG] Transazioni ricorrenti inserite: ${newTransactions.length}');
+        '[DEBUG] Transazioni ricorrenti inserite: ${newTransactions.length}',
+      );
     }
 
     print('[DEBUG] Inizializzazione completata');
@@ -71,8 +72,8 @@ class PulseBudgetApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BilancioMe',
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData.dark(useMaterial3: true),
       themeMode: ThemeMode.system,
       locale: const Locale('it', 'IT'),
       localizationsDelegates: const [

@@ -8,6 +8,7 @@ import '../../providers/period_filter_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/snapshot_provider.dart';
 import '../../model/payment_type.dart';
+import '../widgets/app_title_widget.dart';
 
 class MovementsScreen extends ConsumerStatefulWidget {
   const MovementsScreen({Key? key}) : super(key: key);
@@ -120,7 +121,7 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Movimenti'),
+        title: const AppTitleWidget(title: 'Movimenti'),
         centerTitle: true,
         actions: [
           IconButton(

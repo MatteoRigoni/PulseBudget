@@ -5,9 +5,11 @@ import '../../model/category.dart';
 import '../../model/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/categories_provider.dart';
+import '../../providers/snapshot_provider.dart';
 import 'category_detail_page.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as Math;
+import '../widgets/app_title_widget.dart';
 
 class AnalysisSheet extends ConsumerStatefulWidget {
   @override
@@ -17,6 +19,7 @@ class AnalysisSheet extends ConsumerStatefulWidget {
 class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
   DateTimeRange? selectedRange;
   String selectedType = 'expense'; // 'expense' o 'income'
+  String selectedReport = 'category'; // 'category' o 'patrimony'
 
   @override
   void initState() {
@@ -49,15 +52,20 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
   Widget build(BuildContext context) {
     final transactionsAsync = ref.watch(transactionsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final snapshotsAsync = ref.watch(snapshotProvider);
 
     // Gestisci stati di loading e error
-    if (transactionsAsync.isLoading || categoriesAsync.isLoading) {
+    if (transactionsAsync.isLoading ||
+        categoriesAsync.isLoading ||
+        snapshotsAsync.isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (transactionsAsync.hasError || categoriesAsync.hasError) {
+    if (transactionsAsync.hasError ||
+        categoriesAsync.hasError ||
+        snapshotsAsync.hasError) {
       return Scaffold(
         body: Center(
           child: Column(
@@ -74,6 +82,18 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
 
     final transactions = transactionsAsync.value ?? [];
     final categories = categoriesAsync.value ?? [];
+    final snapshots = snapshotsAsync.value ?? [];
+
+    // Filtra snapshots per periodo selezionato
+    List<dynamic> filteredSnapshots = snapshots;
+    if (selectedRange != null) {
+      filteredSnapshots = snapshots
+          .where((s) =>
+              s.date.isAfter(
+                  selectedRange!.start.subtract(const Duration(days: 1))) &&
+              s.date.isBefore(selectedRange!.end.add(const Duration(days: 1))))
+          .toList();
+    }
 
     List<Transaction> filtered = transactions;
     if (selectedRange != null) {
@@ -104,132 +124,172 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
         : sortedCategories.take(6).toList();
     final shownTotal = shown.fold<double>(0, (sum, e) => sum + e.value.abs());
 
+    // Ottieni il titolo dinamico
+    String getTitle() {
+      switch (selectedReport) {
+        case 'category':
+          return 'Ripartizione categorie';
+        case 'patrimony':
+          return 'Andamento patrimonio';
+        default:
+          return 'Report';
+      }
+    }
+
+    // Determina se mostrare il toggle entrate/uscite
+    bool showTypeToggle() {
+      return selectedReport == 'category';
+    }
+
+    // Determina se ci sono dati da mostrare
+    bool hasData() {
+      switch (selectedReport) {
+        case 'category':
+          return shown.isNotEmpty;
+        case 'patrimony':
+          return filteredSnapshots.isNotEmpty;
+        default:
+          return false;
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Report'),
+        title: const AppTitleWidget(title: 'Report'),
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(
             icon: Icon(Icons.tune),
             onSelected: (value) {
-              // In futuro: cambia tipo di report
+              setState(() {
+                selectedReport = value;
+              });
             },
             itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'category',
                 child: Text('Ripartizione categorie'),
               ),
+              PopupMenuItem(
+                value: 'patrimony',
+                child: Text('Andamento patrimonio'),
+              ),
             ],
           ),
         ],
       ),
-      body: Center(
-        child: shown.isEmpty
-            ? Column(
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          // Titolo sempre visibile
+          Padding(
+            padding: const EdgeInsets.only(top: 24, bottom: 8),
+            child: Text(
+              getTitle(),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          // Filtro periodo sempre visibile
+          Padding(
+            padding: const EdgeInsets.only(left: 10.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Periodo:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final range = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now(),
+                      initialDateRange: selectedRange,
+                    );
+                    if (range != null) {
+                      setState(() => selectedRange = range);
+                    }
+                  },
+                  child: Text(selectedRange == null
+                      ? 'Seleziona periodo'
+                      : '${selectedRange!.start.day}/${selectedRange!.start.month}/${selectedRange!.start.year} - ${selectedRange!.end.day}/${selectedRange!.end.month}/${selectedRange!.end.year}'),
+                ),
+              ],
+            ),
+          ),
+          // Toggle entrate/uscite sempre visibile
+          if (showTypeToggle())
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bar_chart, size: 64, color: Colors.amber.shade400),
-                  const SizedBox(height: 16),
-                  Text('Nessun dato per il periodo selezionato!',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(color: Colors.grey.shade600)),
-                ],
-              )
-            : LayoutBuilder(
-                builder: (context, constraints) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 24, bottom: 8),
-                        child: Text(
-                          'Ripartizione categorie',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(
+                        value: 'expense',
+                        label: const Text('Uscite'),
+                        icon: Icon(
+                          Icons.arrow_downward,
+                          color: selectedType == 'expense'
+                              ? Colors.red
+                              : Colors.grey,
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 10.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Periodo:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            TextButton(
-                              onPressed: () async {
-                                final range = await showDateRangePicker(
-                                  context: context,
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime.now(),
-                                  initialDateRange: selectedRange,
-                                );
-                                if (range != null) {
-                                  setState(() => selectedRange = range);
-                                }
-                              },
-                              child: Text(selectedRange == null
-                                  ? 'Seleziona periodo'
-                                  : '${selectedRange!.start.day}/${selectedRange!.start.month}/${selectedRange!.start.year} - ${selectedRange!.end.day}/${selectedRange!.end.month}/${selectedRange!.end.year}'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Toggle entrate/uscite centrato sotto periodo
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SegmentedButton<String>(
-                              segments: [
-                                ButtonSegment(
-                                  value: 'expense',
-                                  label: const Text('Uscite'),
-                                  icon: Icon(
-                                    Icons.arrow_downward,
-                                    color: selectedType == 'expense'
-                                        ? Colors.red
-                                        : Colors.grey,
-                                  ),
-                                ),
-                                ButtonSegment(
-                                  value: 'income',
-                                  label: const Text('Entrate'),
-                                  icon: Icon(
-                                    Icons.arrow_upward,
-                                    color: selectedType == 'income'
-                                        ? Colors.green
-                                        : Colors.grey,
-                                  ),
-                                ),
-                              ],
-                              selected: {selectedType},
-                              onSelectionChanged: (s) {
-                                setState(() => selectedType = s.first);
-                              },
-                              showSelectedIcon: false, // Nessuna spunta
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: _FullScreenPie(
-                          shown: shown,
-                          shownTotal: shownTotal,
+                      ButtonSegment(
+                        value: 'income',
+                        label: const Text('Entrate'),
+                        icon: Icon(
+                          Icons.arrow_upward,
+                          color: selectedType == 'income'
+                              ? Colors.green
+                              : Colors.grey,
                         ),
                       ),
                     ],
-                  );
-                },
+                    selected: {selectedType},
+                    onSelectionChanged: (s) {
+                      setState(() => selectedType = s.first);
+                    },
+                    showSelectedIcon: false, // Nessuna spunta
+                  ),
+                ],
               ),
+            ),
+          const SizedBox(height: 8),
+          // Area del grafico - placeholder solo se non ci sono dati
+          Expanded(
+            child: hasData()
+                ? selectedReport == 'category'
+                    ? _FullScreenPie(
+                        shown: shown,
+                        shownTotal: shownTotal,
+                      )
+                    : _PatrimonyBarChart(
+                        snapshots: filteredSnapshots,
+                      )
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bar_chart,
+                            size: 64, color: Colors.amber.shade400),
+                        const SizedBox(height: 16),
+                        Text('Nessun dato per il periodo selezionato!',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -403,4 +463,151 @@ class _CategoryPieData {
   final Color color;
   _CategoryPieData(
       {required this.name, required this.value, required this.color});
+}
+
+class _PatrimonyBarChart extends StatelessWidget {
+  final List<dynamic> snapshots;
+  const _PatrimonyBarChart({required this.snapshots});
+
+  @override
+  Widget build(BuildContext context) {
+    if (snapshots.isEmpty) return const SizedBox.shrink();
+
+    // Ordina gli snapshot per data
+    final sortedSnapshots = List.from(snapshots)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    // Prepara i dati per il grafico
+    final barGroups = sortedSnapshots.asMap().entries.map((entry) {
+      final index = entry.key;
+      final snapshot = entry.value;
+      final total = snapshot.accounts
+          .fold<double>(0, (sum, account) => sum + account.balance);
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: total,
+            color: total >= 0
+                ? const Color(0xFF2ECC71) // Verde per valori positivi
+                : const Color(0xFFE74C3C), // Rosso per valori negativi
+            width: 20,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(4),
+            ),
+          ),
+        ],
+      );
+    }).toList();
+
+    // Trova il valore massimo per la scala Y
+    final maxValue = sortedSnapshots.fold<double>(0, (max, snapshot) {
+      final total = snapshot.accounts
+          .fold<double>(0, (sum, account) => sum + account.balance);
+      return total.abs() > max ? total.abs() : max;
+    });
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxValue * 1.2, // 20% di margine sopra
+          minY: -maxValue * 0.2, // 20% di margine sotto per valori negativi
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              tooltipBgColor: Colors.grey.shade800,
+              tooltipRoundedRadius: 8,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final snapshot = sortedSnapshots[group.x];
+                final total = snapshot.accounts
+                    .fold<double>(0, (sum, account) => sum + account.balance);
+                final date = DateFormat('dd/MM/yyyy').format(snapshot.date);
+                return BarTooltipItem(
+                  '$date\n',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: '€${total.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() >= 0 &&
+                      value.toInt() < sortedSnapshots.length) {
+                    final snapshot = sortedSnapshots[value.toInt()];
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        DateFormat('dd/MM').format(snapshot.date),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    );
+                  }
+                  return const Text('');
+                },
+                reservedSize: 40,
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 60,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    '€${value.toInt()}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          barGroups: barGroups,
+          gridData: const FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 1000, // Intervallo griglia orizzontale
+          ),
+        ),
+      ),
+    );
+  }
 }

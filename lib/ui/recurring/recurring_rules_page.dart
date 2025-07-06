@@ -7,6 +7,7 @@ import 'new_recurring_rule_sheet.dart';
 import '../../providers/recurring_bootstrap_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/categories_provider.dart';
+import '../widgets/app_title_widget.dart';
 
 class RecurringRulesPage extends ConsumerWidget {
   const RecurringRulesPage({Key? key}) : super(key: key);
@@ -78,7 +79,7 @@ class RecurringRulesPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Ricorrenti'),
+        title: const AppTitleWidget(title: 'Ricorrenti'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

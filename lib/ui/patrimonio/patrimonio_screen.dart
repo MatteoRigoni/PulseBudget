@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import '../../model/snapshot.dart';
 import '../../providers/snapshot_provider.dart';
 import 'new_snapshot_sheet.dart';
+import '../widgets/app_title_widget.dart';
 
 class PatrimonioScreen extends ConsumerWidget {
   const PatrimonioScreen({Key? key}) : super(key: key);
@@ -51,7 +52,7 @@ class PatrimonioScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Patrimonio'),
+        title: const AppTitleWidget(title: 'Patrimonio'),
         centerTitle: true,
         actions: [
           PopupMenuButton<String>(

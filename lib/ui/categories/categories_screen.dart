@@ -4,6 +4,7 @@ import '../../providers/categories_provider.dart';
 import '../../model/category.dart';
 import 'new_category_sheet.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../widgets/app_title_widget.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -51,7 +52,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('Categorie'),
+        title: const AppTitleWidget(title: 'Categorie'),
       ),
       body: Column(
         children: [

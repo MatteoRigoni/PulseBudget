@@ -20,6 +20,7 @@ import '../../services/seed_data_service.dart';
 import '../../services/cloud_sync_service.dart';
 import '../../services/auto_sync_service.dart';
 import '../widgets/sync_status_widget.dart';
+import '../widgets/app_title_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -219,7 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const Text('BilancioMe'),
+        title: const AppTitleWidget(title: 'BilancioMe'),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
@@ -351,15 +352,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     }
                   }
                 },
-                style: ButtonStyle(
-                  backgroundColor:
-                      MaterialStateProperty.resolveWith<Color?>((states) {
-                    if (states.contains(MaterialState.selected)) {
-                      return theme.colorScheme.surface;
-                    }
-                    return theme.colorScheme.surfaceVariant;
-                  }),
-                ),
               ),
             ),
             // MonthChipsRow or YearChipsRow
