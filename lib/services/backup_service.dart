@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'database_service.dart';
+import 'cloud_sync_service.dart';
 
 class BackupService {
   final DatabaseService _databaseService;
@@ -17,16 +19,30 @@ class BackupService {
   }
 
   // Salva backup su file locale
-  Future<File> saveBackupLocally() async {
-    final data = await _databaseService.exportData();
-    final jsonString = jsonEncode(data);
+  Future<File?> saveBackupLocally() async {
+    try {
+      final data = await _databaseService.exportData();
+      final jsonString = jsonEncode(data);
 
-    final directory = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${directory.path}/bilanciome_backup_$timestamp.json');
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'bilanciome_backup_$timestamp.json';
 
-    await file.writeAsString(jsonString);
-    return file;
+      // Crea un file temporaneo nella directory temporanea
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsString(jsonString);
+
+      // Usa share_plus per permettere all'utente di scegliere dove salvare
+      await Share.shareXFiles(
+        [XFile(tempFile.path)],
+        text: 'Backup BilancioMe',
+        subject: 'Dati backup',
+      );
+
+      return tempFile;
+    } catch (e) {
+      throw Exception('Errore nel salvataggio del backup: $e');
+    }
   }
 
   // Carica backup da file
@@ -51,33 +67,47 @@ class BackupService {
   }
 
   // Esporta in CSV per Excel
-  Future<File> exportToCsv() async {
-    final data = await _databaseService.exportData();
-    final transactions = data['transactions'] as List;
+  Future<File?> exportToCsv() async {
+    try {
+      final data = await _databaseService.exportData();
+      final transactions = data['transactions'] as List;
 
-    final csvData = StringBuffer();
-    csvData.writeln('Data,Descrizione,Importo,Categoria,Tipo Pagamento');
+      final csvData = StringBuffer();
+      csvData.writeln('Data,Descrizione,Importo,Categoria,Tipo Pagamento');
 
-    for (final transaction in transactions) {
-      final date = DateTime.parse(transaction['date']).toLocal();
-      final formattedDate =
-          '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      for (final transaction in transactions) {
+        final date = DateTime.parse(transaction['date']).toLocal();
+        final formattedDate =
+            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
-      csvData.writeln([
-        formattedDate,
-        transaction['description'],
-        transaction['amount'].toString(),
-        transaction['categoryId'],
-        transaction['paymentType'],
-      ].map((field) => '"${field.replaceAll('"', '""')}"').join(','));
+        csvData.writeln([
+          formattedDate,
+          transaction['description'],
+          transaction['amount'].toString(),
+          transaction['categoryId'],
+          transaction['paymentType'],
+        ].map((field) => '"${field.replaceAll('"', '""')}"').join(','));
+      }
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileName = 'bilanciome_export_$timestamp.csv';
+
+      // Crea un file temporaneo nella directory temporanea
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsString(csvData.toString());
+
+      // Usa share_plus per permettere all'utente di scegliere dove salvare
+      await Share.shareXFiles(
+        [XFile(tempFile.path)],
+        text: 'Esportazione CSV da BilancioMe',
+        subject: 'Dati transazioni',
+      );
+
+      return tempFile;
+    } catch (e) {
+      throw Exception('Errore nell\'esportazione CSV: $e');
     }
-
-    final directory = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${directory.path}/bilanciome_export_$timestamp.csv');
-
-    await file.writeAsString(csvData.toString());
-    return file;
   }
 
   // Mostra dialog per scegliere opzioni di backup
@@ -101,14 +131,8 @@ class BackupService {
                     final file = await backupService.saveBackupLocally();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Backup salvato: ${file.path}'),
-                          action: SnackBarAction(
-                            label: 'Condividi',
-                            onPressed: () {
-                              // TODO: Implementare condivisione file
-                            },
-                          ),
+                        const SnackBar(
+                          content: Text('Backup pronto per il salvataggio'),
                         ),
                       );
                     }
@@ -154,14 +178,8 @@ class BackupService {
                     final file = await backupService.exportToCsv();
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('CSV esportato: ${file.path}'),
-                          action: SnackBarAction(
-                            label: 'Condividi',
-                            onPressed: () {
-                              // TODO: Implementare condivisione file
-                            },
-                          ),
+                        const SnackBar(
+                          content: Text('CSV pronto per il salvataggio'),
                         ),
                       );
                     }
@@ -171,6 +189,21 @@ class BackupService {
                         SnackBar(content: Text('Errore: $e')),
                       );
                     }
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cloud_sync),
+                title: const Text('Backup automatico'),
+                subtitle: const Text('Remoto su OneDrive/Google Drive'),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final databaseService = DatabaseService();
+                  final cloudSyncService = CloudSyncService(databaseService);
+                  final provider =
+                      await CloudSyncService.showProviderDialog(context);
+                  if (provider != null) {
+                    await cloudSyncService.setupAutoSync(context, provider);
                   }
                 },
               ),

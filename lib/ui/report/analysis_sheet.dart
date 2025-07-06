@@ -6,6 +6,7 @@ import '../../model/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/snapshot_provider.dart';
+import '../../model/snapshot.dart';
 import 'category_detail_page.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as Math;
@@ -50,6 +51,7 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final entities = ref.watch(entityProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final snapshotsAsync = ref.watch(snapshotProvider);
@@ -465,146 +467,394 @@ class _CategoryPieData {
       {required this.name, required this.value, required this.color});
 }
 
-class _PatrimonyBarChart extends StatelessWidget {
+class _PatrimonyBarChart extends ConsumerStatefulWidget {
   final List<dynamic> snapshots;
   const _PatrimonyBarChart({required this.snapshots});
 
   @override
+  ConsumerState<_PatrimonyBarChart> createState() => _PatrimonyBarChartState();
+}
+
+class _PatrimonyBarChartState extends ConsumerState<_PatrimonyBarChart> {
+  Set<String> _selectedAccounts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    final accounts = widget.snapshots.map((s) => s.label).toSet();
+    _selectedAccounts = accounts.cast<String>();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (snapshots.isEmpty) return const SizedBox.shrink();
+    final entities = ref.watch(entityProvider);
+    if (widget.snapshots.isEmpty) return const SizedBox.shrink();
 
-    // Ordina gli snapshot per data
-    final sortedSnapshots = List.from(snapshots)
-      ..sort((a, b) => a.date.compareTo(b.date));
+    // Verifica che ci siano dati validi
+    final validSnapshots =
+        widget.snapshots.where((s) => s.amount.isFinite).toList();
+    if (validSnapshots.isEmpty) {
+      return const Center(
+        child: Text('Nessun dato valido da visualizzare'),
+      );
+    }
 
-    // Prepara i dati per il grafico
-    final barGroups = sortedSnapshots.asMap().entries.map((entry) {
+    // Raggruppa gli snapshot per data
+    final Map<DateTime, Map<String, double>> snapshotsByDate = {};
+    for (final snapshot in validSnapshots) {
+      final date =
+          DateTime(snapshot.date.year, snapshot.date.month, snapshot.date.day);
+      snapshotsByDate.putIfAbsent(date, () => {});
+      snapshotsByDate[date]![snapshot.label] = snapshot.amount;
+    }
+
+    // Ottieni tutti gli account disponibili
+    final allAccounts = validSnapshots.map((s) => s.label).toSet();
+
+    // Se non ci sono account selezionati, seleziona tutti
+    if (_selectedAccounts.isEmpty) {
+      _selectedAccounts = allAccounts.cast<String>();
+    }
+
+    // Filtra solo gli account selezionati
+    final selectedAccounts = allAccounts
+        .where((account) => _selectedAccounts.contains(account))
+        .toList();
+
+    // Se non ci sono account selezionati, mostra messaggio
+    if (selectedAccounts.isEmpty) {
+      return const Center(
+        child: Text('Nessun account selezionato'),
+      );
+    }
+
+    // Ordina le date
+    final sortedDates = snapshotsByDate.keys.toList()..sort();
+
+    // Colori per gli account
+    final colors = [
+      const Color(0xFF2ECC71), // Verde
+      const Color(0xFF3498DB), // Blu
+      const Color(0xFFE74C3C), // Rosso
+      const Color(0xFFF39C12), // Arancione
+      const Color(0xFF9B59B6), // Viola
+      const Color(0xFF1ABC9C), // Turchese
+      const Color(0xFFE67E22), // Arancione scuro
+      const Color(0xFF34495E), // Grigio scuro
+    ];
+
+    // Prepara i dati per il grafico a barre impilate
+    final barGroups = sortedDates.asMap().entries.map((entry) {
       final index = entry.key;
-      final snapshot = entry.value;
-      final total = snapshot.amount;
+      final date = entry.value;
+      final dateSnapshots = snapshotsByDate[date]!;
 
+      double currentY = 0;
+      final stackItems = <BarChartRodStackItem>[];
+      for (int i = 0; i < allAccounts.length; i++) {
+        final account = allAccounts.elementAt(i);
+        if (!_selectedAccounts.contains(account)) continue;
+        final amount = dateSnapshots[account] ?? 0.0;
+        if (amount.isFinite && amount > 0) {
+          stackItems.add(
+            BarChartRodStackItem(
+              currentY,
+              currentY + amount,
+              colors[i % colors.length],
+            ),
+          );
+          currentY += amount;
+        }
+      }
       return BarChartGroupData(
         x: index,
         barRods: [
           BarChartRodData(
-            toY: total,
-            color: total >= 0
-                ? const Color(0xFF2ECC71) // Verde per valori positivi
-                : const Color(0xFFE74C3C), // Rosso per valori negativi
+            toY: currentY,
+            rodStackItems: stackItems,
             width: 20,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(4),
-              topRight: Radius.circular(4),
-            ),
+            borderRadius: BorderRadius.circular(4),
           ),
         ],
       );
     }).toList();
 
-    // Trova il valore massimo per la scala Y
-    final maxValue = sortedSnapshots.fold<double>(0, (max, snapshot) {
-      final total = snapshot.amount;
-      return total.abs() > max ? total.abs() : max;
-    });
+    // Calcola valori per la scala Y in modo sicuro
+    double maxValue = 1000;
+    double minValue = 0;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: maxValue * 1.2, // 20% di margine sopra
-          minY: -maxValue * 0.2, // 20% di margine sotto per valori negativi
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              tooltipBgColor: Colors.grey.shade800,
-              tooltipRoundedRadius: 8,
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                final snapshot = sortedSnapshots[group.x];
-                final total = snapshot.amount;
-                final date = DateFormat('dd/MM/yyyy').format(snapshot.date);
-                return BarTooltipItem(
-                  '$date\n',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+    if (sortedDates.isNotEmpty) {
+      // Calcola il totale massimo per ogni data
+      final maxTotals = <double>[];
+
+      for (final date in sortedDates) {
+        final dateSnapshots = snapshotsByDate[date]!;
+        double total = 0;
+        bool hasValidData = false;
+
+        for (final account in selectedAccounts) {
+          final amount = dateSnapshots[account] ?? 0.0;
+          if (amount.isFinite && amount > 0) {
+            total += amount;
+            hasValidData = true;
+          }
+        }
+
+        if (hasValidData && total.isFinite) {
+          maxTotals.add(total);
+        }
+      }
+
+      if (maxTotals.isNotEmpty) {
+        maxValue = maxTotals.reduce((a, b) => a > b ? a : b);
+
+        // Verifica che maxValue sia finito e positivo
+        if (maxValue.isFinite && maxValue > 0) {
+          // Aggiungi margini sicuri
+          maxValue = maxValue * 1.2;
+        } else {
+          maxValue = 1000;
+        }
+      } else {
+        maxValue = 1000;
+      }
+    }
+
+    // Verifica finale che i valori siano validi
+    if (!maxValue.isFinite || maxValue <= 0) {
+      maxValue = 1000;
+    }
+    minValue = 0;
+
+    // Verifica che ci siano barre valide da mostrare
+    final hasValidBars = barGroups.any((group) => group.barRods.isNotEmpty);
+    if (!hasValidBars) {
+      return const Center(
+        child: Text('Nessun dato valido da visualizzare'),
+      );
+    }
+
+    return Column(
+      children: [
+        // Legenda account - sempre visibile
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: allAccounts.map((account) {
+              final i = allAccounts.toList().indexOf(account);
+              final isSelected = _selectedAccounts.contains(account);
+              final color = colors[i % colors.length];
+              final entity = entities.firstWhere(
+                (e) => e.name == account,
+                orElse: () => Entity(id: '', type: '', name: account),
+              );
+              return FilterChip(
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextSpan(
-                      text: '€${total.toStringAsFixed(2)}',
+                    if (isSelected)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Icon(Icons.check,
+                            size: 16, color: Colors.grey.shade700),
+                      ),
+                    Text(
+                      account,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        entity.type,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
                     ),
                   ],
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  if (value.toInt() >= 0 &&
-                      value.toInt() < sortedSnapshots.length) {
-                    final snapshot = sortedSnapshots[value.toInt()];
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        DateFormat('dd/MM').format(snapshot.date),
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    );
-                  }
-                  return const Text('');
+                ),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedAccounts.add(account);
+                    } else {
+                      _selectedAccounts.remove(account);
+                    }
+                  });
                 },
-                reservedSize: 40,
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 60,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    '€${value.toInt()}',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(
-              color: Colors.grey.shade300,
-              width: 1,
-            ),
-          ),
-          barGroups: barGroups,
-          gridData: const FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: 1000, // Intervallo griglia orizzontale
+                backgroundColor: Colors.grey.shade200,
+                selectedColor: Theme.of(context).colorScheme.secondaryContainer,
+                showCheckmark: false,
+              );
+            }).toList(),
           ),
         ),
-      ),
+        // Grafico
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16.0),
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxValue,
+                minY: minValue,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.grey.shade800,
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final date = sortedDates[group.x];
+                      final dateSnapshots = snapshotsByDate[date]!;
+                      final dateStr = DateFormat('dd/MM/yyyy').format(date);
+
+                      // Trova l'account corrispondente a questa sezione della barra
+                      final fromY = rod.fromY;
+                      final toY = rod.toY;
+
+                      // Trova l'account basandosi sulla posizione Y
+                      String? account;
+                      double amount = 0;
+                      Color color = Colors.white;
+
+                      double currentY = 0;
+                      for (int i = 0; i < selectedAccounts.length; i++) {
+                        final acc = selectedAccounts[i];
+                        final accAmount = dateSnapshots[acc] ?? 0.0;
+                        if (accAmount.isFinite && accAmount > 0) {
+                          final accFromY = currentY;
+                          final accToY = currentY + accAmount;
+
+                          if (fromY >= accFromY && toY <= accToY) {
+                            account = acc;
+                            amount = accAmount;
+                            color = colors[i % colors.length];
+                            break;
+                          }
+                          currentY = accToY;
+                        }
+                      }
+
+                      if (account != null) {
+                        return BarTooltipItem(
+                          '$dateStr\n',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: '$account: €${amount.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: color,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return BarTooltipItem(
+                          '$dateStr\n',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          children: [
+                            const TextSpan(
+                              text: 'Nessun dato',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value.toInt() >= 0 &&
+                            value.toInt() < sortedDates.length) {
+                          final date = sortedDates[value.toInt()];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              DateFormat('dd/MM').format(date),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                      reservedSize: 40,
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 60,
+                      getTitlesWidget: (value, meta) {
+                        if (value.isFinite) {
+                          return Text(
+                            '€${value.toInt()}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                  ),
+                ),
+                barGroups: barGroups,
+                gridData: const FlGridData(
+                  show: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

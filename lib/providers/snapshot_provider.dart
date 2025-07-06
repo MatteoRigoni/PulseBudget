@@ -117,7 +117,16 @@ class EntityNotifier extends StateNotifier<List<Entity>> {
 
   Future<void> removeEntity(String id) async {
     try {
+      // Trova l'entità prima di eliminarla per ottenere il nome
+      final entity = state.firstWhere((e) => e.id == id);
+
+      // Elimina l'entità
       await _databaseService.deleteEntity(id);
+
+      // Elimina tutti gli snapshot associati a questo account
+      await _databaseService.deleteSnapshotsByAccount(entity.name);
+
+      // Aggiorna lo stato
       state = state.where((e) => e.id != id).toList();
     } catch (e) {
       print('Error removing entity: $e');

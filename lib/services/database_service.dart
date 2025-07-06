@@ -290,6 +290,11 @@ class DatabaseService {
     await db.delete('snapshots', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<void> deleteSnapshotsByAccount(String accountName) async {
+    final db = await database;
+    await db.delete('snapshots', where: 'label = ?', whereArgs: [accountName]);
+  }
+
   // Metodi per le regole ricorrenti
   Future<List<RecurringRule>> getRecurringRules() async {
     final db = await database;

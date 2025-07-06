@@ -148,72 +148,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
-  void _showCloudSyncDialog(BuildContext context) async {
-    final databaseService = DatabaseService();
-    final cloudSyncService = CloudSyncService(databaseService);
-
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Sincronizzazione Cloud'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.cloud_sync),
-                title: const Text('Sincronizzazione Automatica'),
-                subtitle:
-                    const Text('Sincronizza da solo con OneDrive/Google Drive'),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  final provider =
-                      await CloudSyncService.showProviderDialog(context);
-                  if (provider != null) {
-                    await cloudSyncService.setupAutoSync(context, provider);
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud_upload),
-                title: const Text('Sincronizza ora con OneDrive'),
-                subtitle: const Text('Carica dati su OneDrive'),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await cloudSyncService.syncWithOneDrive(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud_upload),
-                title: const Text('Sincronizza ora con Google Drive'),
-                subtitle: const Text('Carica dati su Google Drive'),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await cloudSyncService.syncWithGoogleDrive(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cloud_download),
-                title: const Text('Ripristina da Cloud'),
-                subtitle: const Text('Carica dati dal cloud'),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await cloudSyncService.restoreFromCloud(context);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Chiudi'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -304,8 +238,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     ),
                   );
                 }
-              } else if (value == 'cloud_sync') {
-                _showCloudSyncDialog(context);
               }
             },
             itemBuilder: (context) => [
@@ -349,17 +281,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ],
                 ),
               ),
-              const PopupMenuItem(
-                value: 'cloud_sync',
-                child: Row(
-                  children: [
-                    Icon(Icons.cloud_sync, size: 20),
-                    SizedBox(width: 8),
-                    Text('Sincronizzazione Cloud'),
-                  ],
-                ),
-              ),
-              // Altre voci di menu qui
             ],
           ),
         ],
@@ -530,7 +451,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 onTapDown: (_) => _balanceAnimController.reverse(),
                 onTapUp: (_) => _balanceAnimController.forward(),
                 onTapCancel: () => _balanceAnimController.forward(),
-                onTap: _refreshData,
+                //onTap: _refreshData,
                 child: ScaleTransition(
                   scale: _balanceScale,
                   child: Container(
