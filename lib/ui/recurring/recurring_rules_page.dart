@@ -8,6 +8,7 @@ import '../../providers/recurring_bootstrap_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../widgets/app_title_widget.dart';
+import '../widgets/custom_snackbar.dart';
 
 class RecurringRulesPage extends ConsumerWidget {
   const RecurringRulesPage({Key? key}) : super(key: key);
@@ -78,8 +79,18 @@ class RecurringRulesPage extends ConsumerWidget {
     final categories = categoriesAsync.value ?? [];
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        title: const AppTitleWidget(title: 'Ricorrenti'),
+        centerTitle: false,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Icon(Icons.repeat,
+                size: 24, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Ricorrenti',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -93,10 +104,10 @@ class RecurringRulesPage extends ConsumerWidget {
               //ref.invalidate(transactionsProvider);
 
               // Mostra popup di conferma
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: const Text('Movimenti ricorrenti aggiornati'),
-                    duration: const Duration(seconds: 2)),
+              CustomSnackBar.show(
+                context,
+                message: 'Movimenti ricorrenti aggiornati',
+                duration: const Duration(seconds: 2),
               );
             },
           ),
@@ -141,19 +152,7 @@ class RecurringRulesPage extends ConsumerWidget {
                     await ref
                         .read(recurringRulesNotifierProvider.notifier)
                         .removeRule(rule.id);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Regola eliminata'),
-                        action: SnackBarAction(
-                          label: 'Ripristina',
-                          onPressed: () async {
-                            // TODO: Implementare ripristino con Firestore
-                          },
-                        ),
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
+                    CustomSnackBar.show(context, message: 'Regola eliminata');
                   },
                   child: ListTile(
                     leading: Icon(

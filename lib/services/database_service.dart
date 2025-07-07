@@ -4,6 +4,10 @@ import '../model/transaction.dart' as model;
 import '../model/category.dart';
 import '../model/snapshot.dart';
 import '../model/recurring_rule.dart';
+import '../model/train_sample.dart';
+import '../model/category_stat.dart';
+import '../model/statement_info.dart';
+import 'dart:convert';
 
 class DatabaseService {
   static Database? _database;
@@ -20,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -34,7 +38,8 @@ class DatabaseService {
         name TEXT NOT NULL,
         iconCodePoint INTEGER NOT NULL,
         colorHex TEXT NOT NULL,
-        type TEXT NOT NULL
+        type TEXT NOT NULL,
+        isSeed INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -85,6 +90,38 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL,
         name TEXT NOT NULL
+      )
+    ''');
+
+    // Tabella campioni di training per AI
+    await db.execute('''
+      CREATE TABLE train_samples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT NOT NULL,
+        categoryId TEXT NOT NULL,
+        FOREIGN KEY (categoryId) REFERENCES categories (id)
+      )
+    ''');
+
+    // Tabella statistiche categorie per AI
+    await db.execute('''
+      CREATE TABLE category_stats (
+        categoryId TEXT PRIMARY KEY,
+        total INTEGER NOT NULL,
+        wordCounts TEXT NOT NULL,
+        FOREIGN KEY (categoryId) REFERENCES categories (id)
+      )
+    ''');
+
+    // Tabella estratti conto processati
+    await db.execute('''
+      CREATE TABLE statement_infos (
+        id TEXT PRIMARY KEY,
+        accountHolder TEXT NOT NULL,
+        month TEXT NOT NULL,
+        processedDate TEXT NOT NULL,
+        transactionCount INTEGER NOT NULL,
+        paymentType TEXT NOT NULL
       )
     ''');
 
@@ -166,6 +203,36 @@ class DatabaseService {
 
         // Ricrea gli indici
         await db.execute('CREATE INDEX idx_snapshots_date ON snapshots(date)');
+
+        // Aggiungi tabelle AI se non esistono
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS train_samples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            description TEXT NOT NULL,
+            categoryId TEXT NOT NULL,
+            FOREIGN KEY (categoryId) REFERENCES categories (id)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS category_stats (
+            categoryId TEXT PRIMARY KEY,
+            total INTEGER NOT NULL,
+            wordCounts TEXT NOT NULL,
+            FOREIGN KEY (categoryId) REFERENCES categories (id)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS statement_infos (
+            id TEXT PRIMARY KEY,
+            accountHolder TEXT NOT NULL,
+            month TEXT NOT NULL,
+            processedDate TEXT NOT NULL,
+            transactionCount INTEGER NOT NULL,
+            paymentType TEXT NOT NULL
+          )
+        ''');
       } catch (e) {
         print('Migration error: $e');
       }
@@ -193,6 +260,52 @@ class DatabaseService {
         }
       } catch (e) {
         print('Migration error: $e');
+      }
+    }
+
+    if (oldVersion < 4) {
+      // Migrazione da versione 3 a 4: aggiungi tabelle per training AI
+      try {
+        await db.execute('''
+          CREATE TABLE train_samples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            description TEXT NOT NULL,
+            categoryId TEXT NOT NULL,
+            FOREIGN KEY (categoryId) REFERENCES categories (id)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE category_stats (
+            categoryId TEXT PRIMARY KEY,
+            total INTEGER NOT NULL,
+            wordCounts TEXT NOT NULL,
+            FOREIGN KEY (categoryId) REFERENCES categories (id)
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE statement_infos (
+            id TEXT PRIMARY KEY,
+            accountHolder TEXT NOT NULL,
+            month TEXT NOT NULL,
+            processedDate TEXT NOT NULL,
+            transactionCount INTEGER NOT NULL,
+            paymentType TEXT NOT NULL
+          )
+        ''');
+      } catch (e) {
+        print('Migration error: $e');
+      }
+    }
+
+    if (oldVersion < 5) {
+      // Migrazione: aggiungi colonna isSeed a categories se non esiste
+      final columns = await db.rawQuery("PRAGMA table_info(categories)");
+      final hasIsSeed = columns.any((col) => col['name'] == 'isSeed');
+      if (!hasIsSeed) {
+        await db.execute(
+            'ALTER TABLE categories ADD COLUMN isSeed INTEGER NOT NULL DEFAULT 0');
       }
     }
   }
@@ -428,5 +541,121 @@ class DatabaseService {
         }
       }
     });
+  }
+
+  // ===== METODI PER TRAINING AI =====
+
+  /// Inizializza il database (metodo pubblico)
+  Future<void> initialize() async {
+    await database;
+  }
+
+  /// Inserisce un campione di training
+  Future<void> insertTrainSample(String description, String categoryId) async {
+    final db = await database;
+    await db.insert('train_samples', {
+      'description': description,
+      'categoryId': categoryId,
+    });
+  }
+
+  /// Ottiene tutti i campioni di training
+  Future<List<TrainSample>> getTrainSamples() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('train_samples');
+    return List.generate(maps.length, (i) => TrainSample.fromJson(maps[i]));
+  }
+
+  /// Salva le statistiche di una categoria
+  Future<void> saveCategoryStat(CategoryStat stat) async {
+    final db = await database;
+    await db.insert(
+        'category_stats',
+        {
+          'categoryId': stat.categoryId,
+          'total': stat.total,
+          'wordCounts': jsonEncode(stat.wordCounts),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Ottiene le statistiche di una categoria
+  Future<CategoryStat?> getCategoryStat(String categoryId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'category_stats',
+      where: 'categoryId = ?',
+      whereArgs: [categoryId],
+    );
+
+    if (maps.isEmpty) return null;
+
+    final map = maps.first;
+    return CategoryStat.fromJson({
+      'categoryId': map['categoryId'],
+      'total': map['total'],
+      'wordCounts': jsonDecode(map['wordCounts'] as String),
+    });
+  }
+
+  /// Ottiene tutte le statistiche delle categorie
+  Future<List<CategoryStat>> getAllCategoryStats() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('category_stats');
+    return List.generate(maps.length, (i) {
+      final map = maps[i];
+      return CategoryStat.fromJson({
+        'categoryId': map['categoryId'],
+        'total': map['total'],
+        'wordCounts': jsonDecode(map['wordCounts'] as String),
+      });
+    });
+  }
+
+  /// Elimina tutti i dati di training
+  Future<void> clearTrainingData() async {
+    final db = await database;
+    await db.delete('train_samples');
+    await db.delete('category_stats');
+  }
+
+  // ===== METODI PER ESTRATTI CONTO =====
+
+  /// Salva le informazioni di un estratto conto processato
+  Future<void> saveStatementInfo(StatementInfo info) async {
+    final db = await database;
+    await db.insert('statement_infos', info.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Ottiene l'ultimo estratto conto processato
+  Future<StatementInfo?> getLastStatementInfo() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'statement_infos',
+      orderBy: 'processedDate DESC',
+      limit: 1,
+    );
+
+    if (maps.isEmpty) return null;
+
+    return StatementInfo.fromJson(maps.first);
+  }
+
+  /// Ottiene tutti gli estratti conto processati
+  Future<List<StatementInfo>> getAllStatementInfos() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'statement_infos',
+      orderBy: 'processedDate DESC',
+    );
+
+    return List.generate(maps.length, (i) => StatementInfo.fromJson(maps[i]));
+  }
+
+  /// Elimina tutti gli estratti conto
+  Future<void> clearStatementInfos() async {
+    final db = await database;
+    await db.delete('statement_infos');
   }
 }

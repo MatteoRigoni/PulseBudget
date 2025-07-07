@@ -6,16 +6,24 @@ import '../../providers/categories_provider.dart';
 import '../../model/category.dart';
 import '../home/home_screen.dart';
 
-class TransactionCard extends ConsumerWidget {
+class TransactionCard extends ConsumerStatefulWidget {
   final Transaction transaction;
   final String? highlight;
   const TransactionCard({Key? key, required this.transaction, this.highlight})
       : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TransactionCard> createState() => _TransactionCardState();
+}
+
+class _TransactionCardState extends ConsumerState<TransactionCard> {
+  bool _isExpanded = false;
+  bool _isTextOverflowing = false;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isIncome = transaction.amount > 0;
+    final isIncome = widget.transaction.amount > 0;
     final amountColor =
         isIncome ? HomeScreen.kAppGreen : const Color(0xFFd32f2f);
     final categoriesAsync = ref.watch(categoriesProvider);
@@ -32,7 +40,7 @@ class TransactionCard extends ConsumerWidget {
 
     final categories = categoriesAsync.value ?? [];
     final category = categories.firstWhere(
-      (c) => c.id == transaction.categoryId,
+      (c) => c.id == widget.transaction.categoryId,
       orElse: () => categories.isNotEmpty
           ? categories.first
           : Category(
@@ -46,102 +54,163 @@ class TransactionCard extends ConsumerWidget {
     final iconWidget = category != null
         ? Icon(category.icon, color: category.color, size: 28)
         : const Icon(Icons.category_outlined, size: 28);
-    final paymentTypeLabel = _labelForPaymentType(transaction.paymentType);
-    final paymentTypeIcon = _iconForPaymentType(transaction.paymentType);
-    final dateStr = _formatDate(transaction.date);
+    final paymentTypeLabel =
+        _labelForPaymentType(widget.transaction.paymentType);
+    final paymentTypeIcon = _iconForPaymentType(widget.transaction.paymentType);
+    final dateStr = _formatDate(widget.transaction.date);
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        isThreeLine: false,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-        leading: Stack(
-          children: [
-            iconWidget,
-            if (transaction.isRecurring)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.repeat,
-                    size: 12,
-                    color: Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          // Solo se il testo è espanso, permette di comprimerlo
+          // Altrimenti, se è compresso, lo espande
+          setState(() {
+            _isExpanded = !_isExpanded;
+          });
+        },
+        child: ListTile(
+          isThreeLine: _isExpanded,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          leading: Stack(
+            children: [
+              iconWidget,
+              if (widget.transaction.isRecurring)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.repeat,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ),
-        title: transaction.isRecurring && transaction.recurringRuleName != null
-            ? Text(
-                transaction.recurringRuleName!,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-            : _highlightedText(transaction.description, highlight, theme),
-        subtitle: Text(
-          transaction.isRecurring
-              ? 'Frequenza: ${_getRecurringFrequencyText(transaction.description)}'
-              : dateStr,
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[700],
+            ],
           ),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              (isIncome ? '+' : '-') +
-                  '€' +
-                  _formatAmount(transaction.amount.abs()),
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(color: amountColor, fontWeight: FontWeight.w600),
+          title: widget.transaction.isRecurring &&
+                  widget.transaction.recurringRuleName != null
+              ? Text(
+                  widget.transaction.recurringRuleName!,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              : _buildExpandableDescription(
+                  widget.transaction.description, widget.highlight, theme),
+          subtitle: Text(
+            widget.transaction.isRecurring
+                ? 'Frequenza: ${_getRecurringFrequencyText(widget.transaction.description)}'
+                : dateStr,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[700],
             ),
-            const SizedBox(height: 2),
-            Chip(
-              label: Text(paymentTypeLabel, style: theme.textTheme.labelSmall),
-              avatar: paymentTypeIcon,
-              backgroundColor: theme.colorScheme.surfaceVariant,
-              visualDensity: VisualDensity(horizontal: -4, vertical: -4),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding: EdgeInsets.symmetric(horizontal: 2, vertical: 0),
-              labelPadding: EdgeInsets.zero,
-              side: BorderSide.none,
-            ),
-          ],
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                (isIncome ? '+' : '-') +
+                    '€' +
+                    _formatAmount(widget.transaction.amount.abs()),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: amountColor, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Chip(
+                label:
+                    Text(paymentTypeLabel, style: theme.textTheme.labelSmall),
+                avatar: paymentTypeIcon,
+                backgroundColor: theme.colorScheme.surfaceVariant,
+                visualDensity: VisualDensity(horizontal: -4, vertical: -4),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+                labelPadding: EdgeInsets.zero,
+                side: BorderSide.none,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _highlightedText(String text, String? highlight, ThemeData theme) {
-    if (highlight == null || highlight.isEmpty)
-      return Text(text, style: theme.textTheme.titleMedium);
-    final lower = text.toLowerCase();
-    final query = highlight.toLowerCase();
-    final start = lower.indexOf(query);
-    if (start < 0) return Text(text, style: theme.textTheme.titleMedium);
-    final end = start + query.length;
-    return RichText(
-      text: TextSpan(
-        style: theme.textTheme.titleMedium,
-        children: [
-          TextSpan(text: text.substring(0, start)),
-          TextSpan(
-              text: text.substring(start, end),
-              style: const TextStyle(backgroundColor: Color(0xFFB3E5FC))),
-          TextSpan(text: text.substring(end)),
-        ],
-      ),
+  Widget _buildExpandableDescription(
+      String text, String? highlight, ThemeData theme) {
+    Widget textWidget;
+
+    if (highlight == null || highlight.isEmpty) {
+      textWidget = _isExpanded
+          ? Text(text, style: theme.textTheme.titleMedium)
+          : Text(
+              text,
+              style: theme.textTheme.titleMedium,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            );
+    } else {
+      final lower = text.toLowerCase();
+      final query = highlight.toLowerCase();
+      final start = lower.indexOf(query);
+      if (start < 0) {
+        textWidget = _isExpanded
+            ? Text(text, style: theme.textTheme.titleMedium)
+            : Text(
+                text,
+                style: theme.textTheme.titleMedium,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              );
+      } else {
+        final end = start + query.length;
+        if (_isExpanded) {
+          textWidget = RichText(
+            text: TextSpan(
+              style: theme.textTheme.titleMedium,
+              children: [
+                TextSpan(text: text.substring(0, start)),
+                TextSpan(
+                    text: text.substring(start, end),
+                    style: const TextStyle(backgroundColor: Color(0xFFB3E5FC))),
+                TextSpan(text: text.substring(end)),
+              ],
+            ),
+          );
+        } else {
+          textWidget = RichText(
+            text: TextSpan(
+              style: theme.textTheme.titleMedium,
+              children: [
+                TextSpan(text: text.substring(0, start)),
+                TextSpan(
+                    text: text.substring(start, end),
+                    style: const TextStyle(backgroundColor: Color(0xFFB3E5FC))),
+                TextSpan(text: text.substring(end)),
+              ],
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          );
+        }
+      }
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return textWidget;
+      },
     );
   }
 

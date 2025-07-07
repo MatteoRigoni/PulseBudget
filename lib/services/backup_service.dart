@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:restart_app/restart_app.dart';
 import 'database_service.dart';
 import 'cloud_sync_service.dart';
+import '../ui/widgets/custom_snackbar.dart';
 
 class BackupService {
   final DatabaseService _databaseService;
@@ -131,16 +132,18 @@ class BackupService {
                   try {
                     final file = await backupService.saveBackupLocally();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Backup pronto per il salvataggio'),
-                        ),
+                      CustomSnackBar.show(
+                        context,
+                        message: 'Backup pronto per il salvataggio',
+                        type: SnackBarType.success,
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore: $e')),
+                      CustomSnackBar.show(
+                        context,
+                        message: 'Errore: $e',
+                        type: SnackBarType.error,
                       );
                     }
                   }
@@ -228,8 +231,10 @@ class BackupService {
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore: $e')),
+                      CustomSnackBar.show(
+                        context,
+                        message: 'Errore: $e',
+                        type: SnackBarType.error,
                       );
                     }
                   }
@@ -244,16 +249,18 @@ class BackupService {
                   try {
                     final file = await backupService.exportToCsv();
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('CSV pronto per il salvataggio'),
-                        ),
+                      CustomSnackBar.show(
+                        context,
+                        message: 'CSV pronto per il salvataggio',
+                        type: SnackBarType.success,
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Errore: $e')),
+                      CustomSnackBar.show(
+                        context,
+                        message: 'Errore: $e',
+                        type: SnackBarType.error,
                       );
                     }
                   }

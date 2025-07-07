@@ -5,6 +5,7 @@ import '../../model/category.dart';
 import 'new_category_sheet.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../widgets/app_title_widget.dart';
+import '../widgets/custom_snackbar.dart';
 
 class CategoriesScreen extends ConsumerStatefulWidget {
   const CategoriesScreen({super.key});
@@ -113,12 +114,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
                           fontSize: 15,
                         ),
                   ),
-                  trailing: IconButton(
-                    onPressed: () => _showDeleteDialog(category),
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: Colors.red.withOpacity(0.85),
-                    splashRadius: 20,
-                  ),
+                  trailing: category.isSeed
+                      ? null
+                      : IconButton(
+                          onPressed: () => _showDeleteDialog(category),
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          color: Colors.red.withOpacity(0.85),
+                          splashRadius: 20,
+                        ),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(

@@ -157,8 +157,17 @@ class _AnalysisSheetState extends ConsumerState<AnalysisSheet> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const AppTitleWidget(title: 'Report'),
-        centerTitle: true,
+        centerTitle: false,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Icon(Icons.bar_chart,
+                size: 24, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Report', style: TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
         actions: [
           PopupMenuButton<String>(
             icon: Icon(Icons.tune),

@@ -10,6 +10,7 @@ import 'package:sqflite/sqflite.dart';
 import 'database_service.dart';
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../ui/widgets/custom_snackbar.dart';
 
 class CloudSyncService {
   final DatabaseService _databaseService;
@@ -80,11 +81,10 @@ class CloudSyncService {
     await prefs.setBool('auto_backup_enabled', true);
 
     if (navigatorKey.currentContext != null) {
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        const SnackBar(
-          content: Text('Backup automatico attivato'),
-          backgroundColor: Colors.green,
-        ),
+      CustomSnackBar.show(
+        navigatorKey.currentContext!,
+        message: 'Backup automatico attivato',
+        type: SnackBarType.success,
       );
     }
   }
@@ -95,11 +95,10 @@ class CloudSyncService {
     await prefs.setBool('auto_backup_enabled', false);
 
     if (navigatorKey.currentContext != null) {
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        const SnackBar(
-          content: Text('Backup automatico disabilitato'),
-          backgroundColor: Colors.orange,
-        ),
+      CustomSnackBar.show(
+        navigatorKey.currentContext!,
+        message: 'Backup automatico disabilitato',
+        type: SnackBarType.warning,
       );
     }
   }
@@ -115,12 +114,11 @@ class CloudSyncService {
         await performAutoBackup();
 
         if (navigatorKey.currentContext != null) {
-          ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-            const SnackBar(
-              content: Text('Backup automatico completato'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
+          CustomSnackBar.show(
+            navigatorKey.currentContext!,
+            message: 'Backup automatico completato',
+            type: SnackBarType.success,
+            duration: Duration(seconds: 2),
           );
         }
       }

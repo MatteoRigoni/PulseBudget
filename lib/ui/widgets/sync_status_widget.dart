@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/auto_sync_service.dart';
+import 'custom_snackbar.dart';
 
 class SyncStatusWidget extends ConsumerWidget {
   const SyncStatusWidget({Key? key}) : super(key: key);
@@ -71,10 +72,10 @@ class SyncStatusWidget extends ConsumerWidget {
                   icon: const Icon(Icons.sync, size: 16),
                   onPressed: () {
                     // TODO: Implementare sincronizzazione manuale
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Sincronizzazione in corso...'),
-                      ),
+                    CustomSnackBar.show(
+                      context,
+                      message: 'Sincronizzazione in corso...',
+                      type: SnackBarType.info,
                     );
                   },
                   tooltip: 'Sincronizza ora',

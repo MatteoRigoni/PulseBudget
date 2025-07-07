@@ -1,4 +1,5 @@
 import '../model/transaction.dart';
+import '../model/payment_type.dart';
 
 /// Interfaccia astratta per il repository delle transazioni
 abstract class TransactionRepository {
@@ -25,4 +26,8 @@ abstract class TransactionRepository {
 
   /// Cerca transazioni per descrizione (ricerca case-insensitive)
   Stream<List<Transaction>> searchByDescription(String query);
+
+  /// Elimina transazioni per data e tipo di pagamento (per importazione PDF)
+  Future<void> deleteByDateAndPaymentType(
+      DateTime from, DateTime to, PaymentType type);
 }

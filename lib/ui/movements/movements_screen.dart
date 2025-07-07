@@ -9,6 +9,7 @@ import '../../providers/categories_provider.dart';
 import '../../providers/snapshot_provider.dart';
 import '../../model/payment_type.dart';
 import '../widgets/app_title_widget.dart';
+import '../widgets/custom_snackbar.dart';
 
 class MovementsScreen extends ConsumerStatefulWidget {
   const MovementsScreen({Key? key}) : super(key: key);
@@ -121,8 +122,18 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const AppTitleWidget(title: 'Movimenti'),
-        centerTitle: true,
+        centerTitle: false,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Icon(Icons.list,
+                size: 24, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Movimenti',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.tune),
@@ -259,9 +270,8 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
                         await ref
                             .read(transactionsNotifierProvider.notifier)
                             .delete(transaction.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Movimento eliminato')),
-                        );
+                        CustomSnackBar.show(context,
+                            message: 'Movimento eliminato');
                       },
                       child: TransactionCard(
                         transaction: transaction,

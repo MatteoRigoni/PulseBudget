@@ -6,6 +6,7 @@ class Category {
   IconData icon;
   String colorHex;
   String type; // income | expense
+  bool isSeed;
 
   Category({
     required this.id,
@@ -13,6 +14,7 @@ class Category {
     required this.icon,
     required this.colorHex,
     required this.type,
+    this.isSeed = false,
   });
 
   // Per compatibilità con serializzazione JSON
@@ -26,7 +28,9 @@ class Category {
         name = json['name'],
         icon = IconData(json['iconCodePoint'], fontFamily: 'MaterialIcons'),
         colorHex = json['colorHex'],
-        type = json['type'];
+        type = json['type'],
+        isSeed =
+            (json['isSeed'] is bool) ? json['isSeed'] : (json['isSeed'] == 1);
 
   // Metodo per serializzazione JSON
   Map<String, dynamic> toJson() => {
@@ -35,5 +39,6 @@ class Category {
         'iconCodePoint': icon.codePoint,
         'colorHex': colorHex,
         'type': type,
+        'isSeed': isSeed,
       };
 }

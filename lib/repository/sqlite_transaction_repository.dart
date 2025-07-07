@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'transaction_repository.dart';
 import '../model/transaction.dart';
+import '../model/payment_type.dart';
 import '../services/database_service.dart';
 
 class SqliteTransactionRepository implements TransactionRepository {
@@ -81,6 +82,30 @@ class SqliteTransactionRepository implements TransactionRepository {
         return transaction.descriptionLowercase.contains(lowercaseQuery);
       }).toList();
     });
+  }
+
+  @override
+  Future<void> deleteByDateAndPaymentType(
+      DateTime from, DateTime to, PaymentType type) async {
+    print('[DELETE] Sovrascrittura: range $from - $to, paymentType: $type');
+    final transactions = await _databaseService.getTransactions();
+    final toDelete = transactions.where((transaction) {
+      final inRange =
+          transaction.date.isAfter(from.subtract(const Duration(days: 1))) &&
+              transaction.date.isBefore(to.add(const Duration(days: 1)));
+      final sameType = transaction.paymentType == type;
+      return inRange && sameType;
+    }).toList();
+
+    print(
+        '[DELETE] Transazioni candidate all\'eliminazione: ${toDelete.length}');
+    for (final transaction in toDelete) {
+      print(
+          '[DELETE] Elimino: id=${transaction.id}, data=${transaction.date}, desc="${transaction.description}", paymentType=${transaction.paymentType}');
+      await _databaseService.deleteTransaction(transaction.id);
+    }
+
+    await _loadTransactions();
   }
 
   void dispose() {

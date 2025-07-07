@@ -6,6 +6,7 @@ import '../../model/snapshot.dart';
 import '../../providers/snapshot_provider.dart';
 import 'new_snapshot_sheet.dart';
 import '../widgets/app_title_widget.dart';
+import '../widgets/custom_snackbar.dart';
 
 class PatrimonioScreen extends ConsumerWidget {
   const PatrimonioScreen({Key? key}) : super(key: key);
@@ -55,8 +56,18 @@ class PatrimonioScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const AppTitleWidget(title: 'Patrimonio'),
-        centerTitle: true,
+        centerTitle: false,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Icon(Icons.show_chart,
+                size: 24, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            const Text('Patrimonio',
+                style: TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) async {
@@ -147,12 +158,9 @@ class PatrimonioScreen extends ConsumerWidget {
                                             normalized(e.name) ==
                                                 normalized(name!));
                                     if (exists) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Account già esistente con stesso tipo e nome')),
-                                      );
+                                      CustomSnackBar.show(context,
+                                          message:
+                                              'Account già esistente con stesso tipo e nome');
                                     } else {
                                       await entityNotifier.addEntity(
                                           type!, name!.trim());
@@ -336,12 +344,9 @@ class PatrimonioScreen extends ConsumerWidget {
                                                   normalized(e.name) ==
                                                       normalized(name!));
                                           if (exists) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                  content: Text(
-                                                      'Account già esistente con stesso tipo e nome')),
-                                            );
+                                            CustomSnackBar.show(context,
+                                                message:
+                                                    'Account già esistente con stesso tipo e nome');
                                           } else {
                                             await entityNotifier.addEntity(
                                                 type!, name!.trim());
@@ -440,20 +445,8 @@ class PatrimonioScreen extends ConsumerWidget {
                                 await ref
                                     .read(snapshotNotifierProvider.notifier)
                                     .remove(snapshot.id);
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content:
-                                        const Text('Rilevazione eliminata'),
-                                    action: SnackBarAction(
-                                      label: 'Ripristina',
-                                      onPressed: () async {
-                                        // TODO: Implementare undo con Firestore
-                                      },
-                                    ),
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
+                                CustomSnackBar.show(context,
+                                    message: 'Rilevazione eliminata');
                               },
                               child: SnapshotCard(
                                 snapshot: snapshot,
@@ -462,21 +455,8 @@ class PatrimonioScreen extends ConsumerWidget {
                                   await ref
                                       .read(snapshotNotifierProvider.notifier)
                                       .remove(snapshot.id);
-                                  ScaffoldMessenger.of(context)
-                                      .clearSnackBars();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content:
-                                          const Text('Rilevazione eliminata'),
-                                      action: SnackBarAction(
-                                        label: 'Ripristina',
-                                        onPressed: () async {
-                                          // TODO: Implementare undo con Firestore
-                                        },
-                                      ),
-                                      duration: const Duration(seconds: 3),
-                                    ),
-                                  );
+                                  CustomSnackBar.show(context,
+                                      message: 'Rilevazione eliminata');
                                 },
                               ),
                             );

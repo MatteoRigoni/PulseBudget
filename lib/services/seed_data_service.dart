@@ -21,6 +21,7 @@ class SeedDataService {
         icon: Icons.work,
         colorHex: '#4CAF50',
         type: 'income',
+        isSeed: true,
       ),
       Category(
         id: 'income-gifts',
@@ -28,6 +29,7 @@ class SeedDataService {
         icon: Icons.card_giftcard,
         colorHex: '#E91E63',
         type: 'income',
+        isSeed: true,
       ),
       Category(
         id: 'income-betting',
@@ -35,6 +37,7 @@ class SeedDataService {
         icon: Icons.trending_up,
         colorHex: '#FF9800',
         type: 'income',
+        isSeed: true,
       ),
       Category(
         id: 'income-deposits',
@@ -42,6 +45,7 @@ class SeedDataService {
         icon: Icons.account_balance,
         colorHex: '#2196F3',
         type: 'income',
+        isSeed: true,
       ),
       Category(
         id: 'income-freelance',
@@ -49,6 +53,7 @@ class SeedDataService {
         icon: Icons.computer,
         colorHex: '#9C27B0',
         type: 'income',
+        isSeed: true,
       ),
       Category(
         id: 'income-investment',
@@ -56,6 +61,7 @@ class SeedDataService {
         icon: Icons.trending_up,
         colorHex: '#FF9800',
         type: 'income',
+        isSeed: true,
       ),
 
       // Categorie per uscite
@@ -65,6 +71,7 @@ class SeedDataService {
         icon: Icons.shopping_bag,
         colorHex: '#795548',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-food',
@@ -72,6 +79,7 @@ class SeedDataService {
         icon: Icons.shopping_cart,
         colorHex: '#4CAF50',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-pets',
@@ -79,6 +87,7 @@ class SeedDataService {
         icon: Icons.pets,
         colorHex: '#8BC34A',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-car',
@@ -86,6 +95,7 @@ class SeedDataService {
         icon: Icons.directions_car,
         colorHex: '#607D8B',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-bar',
@@ -93,6 +103,7 @@ class SeedDataService {
         icon: Icons.local_cafe,
         colorHex: '#FF5722',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-bills',
@@ -100,6 +111,7 @@ class SeedDataService {
         icon: Icons.receipt,
         colorHex: '#F44336',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-fuel',
@@ -107,6 +119,7 @@ class SeedDataService {
         icon: Icons.local_gas_station,
         colorHex: '#FF9800',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-home',
@@ -114,6 +127,7 @@ class SeedDataService {
         icon: Icons.home,
         colorHex: '#795548',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-communication',
@@ -121,6 +135,7 @@ class SeedDataService {
         icon: Icons.phone,
         colorHex: '#2196F3',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-family',
@@ -128,6 +143,7 @@ class SeedDataService {
         icon: Icons.family_restroom,
         colorHex: '#E91E63',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-hygiene',
@@ -135,6 +151,7 @@ class SeedDataService {
         icon: Icons.cleaning_services,
         colorHex: '#00BCD4',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-investments',
@@ -142,6 +159,7 @@ class SeedDataService {
         icon: Icons.trending_up,
         colorHex: '#FF9800',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-work',
@@ -149,6 +167,7 @@ class SeedDataService {
         icon: Icons.work,
         colorHex: '#607D8B',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-eating-out',
@@ -156,6 +175,7 @@ class SeedDataService {
         icon: Icons.restaurant,
         colorHex: '#FF5722',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-motorcycle',
@@ -163,6 +183,7 @@ class SeedDataService {
         icon: Icons.motorcycle,
         colorHex: '#607D8B',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-gifts',
@@ -170,6 +191,7 @@ class SeedDataService {
         icon: Icons.card_giftcard,
         colorHex: '#E91E63',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-health',
@@ -177,6 +199,7 @@ class SeedDataService {
         icon: Icons.local_hospital,
         colorHex: '#F44336',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-betting',
@@ -184,6 +207,7 @@ class SeedDataService {
         icon: Icons.trending_up,
         colorHex: '#FF9800',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-misc',
@@ -191,6 +215,7 @@ class SeedDataService {
         icon: Icons.more_horiz,
         colorHex: '#9E9E9E',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-sport',
@@ -198,6 +223,7 @@ class SeedDataService {
         icon: Icons.sports_soccer,
         colorHex: '#4CAF50',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-entertainment',
@@ -205,6 +231,7 @@ class SeedDataService {
         icon: Icons.movie,
         colorHex: '#9C27B0',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-transport',
@@ -212,6 +239,7 @@ class SeedDataService {
         icon: Icons.directions_bus,
         colorHex: '#2196F3',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-technology',
@@ -219,6 +247,7 @@ class SeedDataService {
         icon: Icons.computer,
         colorHex: '#607D8B',
         type: 'expense',
+        isSeed: true,
       ),
       Category(
         id: 'expense-travel',
@@ -226,6 +255,15 @@ class SeedDataService {
         icon: Icons.flight,
         colorHex: '#00BCD4',
         type: 'expense',
+        isSeed: true,
+      ),
+      Category(
+        id: 'transfer-withdrawal',
+        name: 'Prelievo',
+        icon: Icons.account_balance,
+        colorHex: '#607D8B',
+        type: 'transfer',
+        isSeed: true,
       ),
     ];
 

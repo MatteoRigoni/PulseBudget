@@ -22,6 +22,14 @@ import '../../services/auto_sync_service.dart';
 import '../widgets/sync_status_widget.dart';
 import '../widgets/app_title_widget.dart';
 import '../../providers/recurring_bootstrap_provider.dart';
+import '../import/payment_type_sheet.dart';
+import '../import/preview_screen.dart';
+import '../../providers/pdf_import_providers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import '../../providers/pdf_import_provider.dart';
+import '../widgets/custom_snackbar.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -125,19 +133,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
       // Mostra popup di conferma
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Dati aggiornati'), duration: Duration(seconds: 2)),
-        );
+        CustomSnackBar.show(context, message: 'Dati aggiornati');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Errore durante l\'aggiornamento: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        CustomSnackBar.show(context,
+            message: 'Errore durante l\'aggiornamento: $e',
+            type: SnackBarType.error);
       }
     } finally {
       if (mounted) {
@@ -146,6 +148,123 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         });
       }
     }
+  }
+
+  Future<void> _showImportFlow() async {
+    try {
+      // Step 1: Mostra PaymentTypeSheet
+      final shouldContinue = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => const PaymentTypeSheet(),
+      );
+
+      if (shouldContinue != true) return;
+
+      // Step 2: Seleziona file PDF
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      if (file.path == null) {
+        CustomSnackBar.show(context,
+            message: 'Errore nella selezione del file');
+        return;
+      }
+
+      // Step 3: Mostra dialog di caricamento
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text('Analisi estratto in corso...'),
+            ],
+          ),
+        ),
+      );
+
+      // Step 4: Carica e classifica le transazioni
+      final pdfFile = File(file.path!);
+      final notifier = ref.read(importedTransactionsProvider.notifier);
+      final categories = ref.read(categoriesProvider).value ?? [];
+      final paymentType =
+          ref.read(PdfImportProviders.selectedPaymentTypeProvider);
+
+      if (paymentType == null) {
+        if (mounted) {
+          CustomSnackBar.show(context,
+              message: 'Seleziona un tipo di pagamento');
+        }
+        return;
+      }
+      await notifier.loadFromPdf(pdfFile, paymentType, categories);
+
+      // Step 5: Chiudi dialog e mostra anteprima
+      if (mounted) {
+        Navigator.of(context).pop(); // Chiudi dialog di caricamento
+
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const PreviewScreen(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Chiudi dialog se aperto
+        CustomSnackBar.show(context,
+            message: 'Errore durante l\'importazione: $e',
+            type: SnackBarType.error);
+      }
+    }
+  }
+
+  void _showUploadMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.upload_file, color: Color(0xFF87CEEB)),
+              title: const Text('Carica da Estratto Conto'),
+              subtitle: const Text('Importa transazioni da PDF'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showImportFlow();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -202,18 +321,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        title: const AppTitleWidget(title: 'BilancioMe'),
+        centerTitle: false,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Icon(
+              Icons.account_balance_wallet,
+              size: 24,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'BilancioMe',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
             onSelected: (value) async {
-              if (value == 'import') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Import non ancora implementato')),
-                );
-              } else if (value == 'categories') {
+              if (value == 'categories') {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CategoriesScreen()),
                 );
@@ -232,25 +361,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ref.invalidate(recurringRulesProvider);
 
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Dati di test inseriti con successo!'),
-                    ),
-                  );
+                  CustomSnackBar.show(context,
+                      message: 'Dati di test inseriti con successo!');
                 }
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'import',
-                child: Row(
-                  children: [
-                    Icon(Icons.upload, size: 20),
-                    SizedBox(width: 8),
-                    Text('Carica dati da Estratto conto'),
-                  ],
-                ),
-              ),
               const PopupMenuItem(
                 value: 'categories',
                 child: Row(
@@ -622,11 +738,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       // Action FABs
       floatingActionButton: Stack(
         children: [
-          // Entrata FAB
+          // Upload SpeedDial FAB (sinistra)
           Align(
             alignment: Alignment.bottomLeft,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, bottom: 24),
+              child: SpeedDial(
+                icon: Icons.upload,
+                activeIcon: Icons.close,
+                backgroundColor: const Color(0xCC87CEEB),
+                foregroundColor: Colors.white,
+                overlayOpacity: 0.1,
+                spacing: 8,
+                spaceBetweenChildren: 8,
+                childPadding: const EdgeInsets.symmetric(
+                  // ↓ padding verticale del blocco
+                  vertical: 2,
+                ),
+                switchLabelPosition:
+                    true, // <— sposta le label a destra del FAB
+                children: [
+                  SpeedDialChild(
+                    backgroundColor: Colors.transparent,
+                    labelWidget: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFF3EFFF),
+                        borderRadius: BorderRadius.circular(32),
+                      ),
+                      child: const Text(
+                        'Carica da Estratto Conto',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        style: TextStyle(
+                          color: Color(0xFF5A3FA0),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    onTap: _showImportFlow,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Più (entrata) FAB a destra
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16, bottom: 24),
               child: SizedBox(
                 width: 54,
                 height: 54,
@@ -635,8 +798,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   duration: Duration(milliseconds: 120),
                   child: FloatingActionButton(
                     heroTag: "entrata",
-                    backgroundColor:
-                        const Color(0xCC7EE787), // verde pastello traslucido
+                    backgroundColor: const Color(0xCC7EE787),
                     foregroundColor: Colors.white,
                     elevation: 8,
                     shape: RoundedRectangleBorder(
@@ -650,11 +812,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
-          // Uscita FAB
+          // Meno (uscita) FAB a destra, a sinistra del più
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
-              padding: const EdgeInsets.only(right: 16, bottom: 24),
+              padding: const EdgeInsets.only(right: 88, bottom: 24),
               child: SizedBox(
                 width: 54,
                 height: 54,
@@ -663,8 +825,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   duration: Duration(milliseconds: 120),
                   child: FloatingActionButton(
                     heroTag: "uscita",
-                    backgroundColor:
-                        const Color(0xCCFF8A80), // rosso pastello traslucido
+                    backgroundColor: const Color(0xCCFF8A80),
                     foregroundColor: Colors.white,
                     elevation: 8,
                     shape: RoundedRectangleBorder(
