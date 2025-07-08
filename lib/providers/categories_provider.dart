@@ -107,7 +107,7 @@ final List<Category> _defaultCategories = [
   Category(
     id: 'income-betting',
     name: 'Scommesse',
-    icon: Icons.trending_up,
+    icon: Icons.sports_soccer, // pallone
     colorHex: '#FF9800',
     type: 'income',
   ),
@@ -137,7 +137,7 @@ final List<Category> _defaultCategories = [
   Category(
     id: 'expense-clothing',
     name: 'Abbigliamento',
-    icon: Icons.shopping_bag,
+    icon: Icons.checkroom, // t-shirt
     colorHex: '#795548',
     type: 'expense',
   ),
@@ -256,7 +256,7 @@ final List<Category> _defaultCategories = [
   Category(
     id: 'expense-betting',
     name: 'Scommesse',
-    icon: Icons.trending_up,
+    icon: Icons.sports_soccer, // pallone
     colorHex: '#FF9800',
     type: 'expense',
   ),

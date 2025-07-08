@@ -12,6 +12,7 @@ class ImportedTransaction {
   String? suggestedCategoryId;
   double confidence;
   bool isCorrected;
+  bool isManuallyCorrected;
 
   ImportedTransaction({
     String? id,
@@ -23,6 +24,7 @@ class ImportedTransaction {
     this.suggestedCategoryId,
     this.confidence = 0.0,
     this.isCorrected = false,
+    this.isManuallyCorrected = false,
   }) : id = id ?? const Uuid().v4();
 
   // Factory constructor per creare da una riga di testo
@@ -66,6 +68,7 @@ class ImportedTransaction {
     String? suggestedCategoryId,
     double? confidence,
     bool? isCorrected,
+    bool? isManuallyCorrected,
   }) {
     return ImportedTransaction(
       id: id ?? this.id,
@@ -77,6 +80,7 @@ class ImportedTransaction {
       suggestedCategoryId: suggestedCategoryId ?? this.suggestedCategoryId,
       confidence: confidence ?? this.confidence,
       isCorrected: isCorrected ?? this.isCorrected,
+      isManuallyCorrected: isManuallyCorrected ?? this.isManuallyCorrected,
     );
   }
 

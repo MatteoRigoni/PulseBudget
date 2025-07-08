@@ -5,6 +5,9 @@ import '../model/category_stat.dart';
 import 'isar_service.dart';
 import 'database_service.dart';
 
+// Debug log globale per abilitare/disabilitare tutti i log avanzati di classificazione
+const bool kDebugLogs = false;
+
 class CategoryClassifier {
   static final Map<String, List<String>> _keywordRules = {
     // Entrate
@@ -16,7 +19,21 @@ class CategoryClassifier {
       'retribuzione',
       'mensilità',
       'emolumento',
-      'cedolino'
+      'cedolino',
+      'paga mensile',
+      'retribuzione netta',
+      'emolumenti',
+      'accredito stipendio',
+      'salario netto',
+      'pagamento mensile',
+      'bonifico stipendio',
+      'trattamento economico',
+      'salario lordo',
+      'accredito paga',
+      'compenso mensile',
+      'pagamento lav.',
+      'accr. stipendio',
+      'salario aziendale'
     ],
     'income-gifts': [
       'regalo',
@@ -24,7 +41,21 @@ class CategoryClassifier {
       'regali',
       'dono',
       'contributo',
-      'elargizione'
+      'elargizione',
+      'regalo compleanno',
+      'regalo natale',
+      'accredito regalo',
+      'ricezione regalo',
+      'dono ricevuto',
+      'contributo amico',
+      'eredità',
+      'lascito',
+      'premio regalo',
+      'supporto familiare',
+      'liberalità',
+      'accredito donazione',
+      'credito regalo',
+      'trasferimento regalo'
     ],
     'income-betting': [
       'vincita',
@@ -34,7 +65,21 @@ class CategoryClassifier {
       'lotteria',
       'gratta e vinci',
       'superenalotto',
-      'vincite'
+      'vincite',
+      'premio scommessa',
+      'accredito vincita',
+      'payout betting',
+      'guadagno scommesse',
+      'riscossione vincita',
+      'vincita giochi',
+      'montepremi',
+      'premio lotteria',
+      'accredito gratta e vinci',
+      'payout superenalotto',
+      'riscossione premi',
+      'vincita concorso',
+      'bonus gioco',
+      'pagamento vincita'
     ],
     'income-deposits': [
       'deposito',
@@ -42,7 +87,21 @@ class CategoryClassifier {
       'accredito',
       'bonifico in entrata',
       'ricarica',
-      'trasferimento in entrata'
+      'trasferimento in entrata',
+      'accredito contanti',
+      'bonifico ricevuto',
+      'trasferimento ricevuto',
+      'accredito wallet',
+      'incasso',
+      'accredito assegno',
+      'versamento contanti',
+      'ricarica wallet',
+      'pagamento ricevuto',
+      'deposito automatico',
+      'entrata fondi',
+      'trasferimento bancario',
+      'credito su conto',
+      'ricarica contante'
     ],
     'income-freelance': [
       'freelance',
@@ -51,7 +110,21 @@ class CategoryClassifier {
       'collaborazione',
       'compenso',
       'progetto',
-      'pagamento freelance'
+      'pagamento freelance',
+      'pagamento prestazione',
+      'compenso consulenza',
+      'saldo fattura',
+      'compenso occasionale',
+      'rimborso collaborazione',
+      'accredito freelance',
+      'collaborazione occasionale',
+      'emolumenti freelance',
+      'pagamento collaborazione',
+      'pagamento autonomo',
+      'parcella professionale',
+      'reddito autonomo',
+      'fatturazione freelance',
+      'accredito collaborazione'
     ],
     'income-investment': [
       'dividendo',
@@ -61,7 +134,21 @@ class CategoryClassifier {
       'cedola',
       'guadagno titoli',
       'plusvalenza',
-      'rendita'
+      'rendita',
+      'accredito interessi',
+      'dividendi azioni',
+      'rendimento obbligazioni',
+      'profitti investimento',
+      'liquidazione fondi',
+      'guadagno fondi',
+      'reddito capitale',
+      'guadagno cripto',
+      'accredito plusvalenze',
+      'cedola obbligazione',
+      'interessi maturati',
+      'profitto borsa',
+      'guadagno ETF',
+      'rendimento investimenti'
     ],
 
     // Uscite
@@ -73,7 +160,19 @@ class CategoryClassifier {
       'maglietta',
       'pantaloni',
       'giacca',
-      'negozio abbigliamento'
+      'negozio abbigliamento',
+      't-shirt',
+      'camicia',
+      'felpa',
+      'jeans',
+      'intimo',
+      'calzature',
+      'stivali',
+      'accessori moda',
+      'boutique',
+      'shopping online',
+      'negozio scarpe',
+      'abbigliamento sportivo'
     ],
     'expense-food': [
       'supermercato',
@@ -92,7 +191,17 @@ class CategoryClassifier {
       'famila',
       'bennet',
       'craì',
-      'grocery'
+      'grocery',
+      'ipercoop',
+      'eurospin',
+      'decò',
+      'sigma',
+      'alimentari locali',
+      'spesa online',
+      'mercato ortofrutta',
+      'negozio bio',
+      'market',
+      'minimarket'
     ],
     'expense-pets': [
       'animali',
@@ -102,7 +211,19 @@ class CategoryClassifier {
       'toelettatura',
       'cuccia',
       'crocchette',
-      'accessori animali'
+      'accessori animali',
+      'pet shop',
+      'clinica veterinaria',
+      'snack animali',
+      'antiparassitari',
+      'giochi animali',
+      'negozio animali',
+      'cuccia cane',
+      'cuccia gatto',
+      'pensione animali',
+      'cura pet',
+      'visita veterinaria',
+      'farmacia veterinaria'
     ],
     'expense-car': [
       'auto',
@@ -118,7 +239,17 @@ class CategoryClassifier {
       'riparazione auto',
       'garage',
       'parcheggio',
-      'autolavaggio'
+      'autolavaggio',
+      'gomme',
+      'pneumatici',
+      'officina',
+      'accessori auto',
+      'cambio olio',
+      'noleggio auto',
+      'lavaggio auto',
+      'revisione auto',
+      'ricambi auto',
+      'stazione servizio'
     ],
     'expense-bar': [
       'bar',
@@ -128,7 +259,18 @@ class CategoryClassifier {
       'spritz',
       'happy hour',
       'pasticceria',
-      'pub'
+      'pub',
+      'caffetteria',
+      'wine bar',
+      'birreria',
+      'cocktail bar',
+      'snack bar',
+      'bar pasticceria',
+      'bistrot',
+      'breakfast bar',
+      'drink bar',
+      'lounge bar',
+      'spuntino bar'
     ],
     'expense-bills': [
       'bolletta',
@@ -147,7 +289,17 @@ class CategoryClassifier {
       'fattura energia',
       'bolletta gas',
       'bolletta luce',
-      'bolletta acqua'
+      'bolletta acqua',
+      'canone',
+      'spese utenze',
+      'bolletta condominio',
+      'enigas',
+      'energia elettrica',
+      'gestore luce',
+      'gestore gas',
+      'fatturazione servizi',
+      'spese servizi',
+      'spese acqua'
     ],
     'expense-fuel': [
       'benzina',
@@ -158,7 +310,17 @@ class CategoryClassifier {
       'distributore',
       'pompa',
       'metano',
-      'self service'
+      'self service',
+      'stazione carburante',
+      'impianto gpl',
+      'rifornimento self',
+      'carburante auto',
+      'fuel station',
+      'erogazione benzina',
+      'gasolio',
+      'servizio carburante',
+      'pagamento benzina',
+      'servizio rifornimento'
     ],
     'expense-home': [
       'casa',
@@ -171,7 +333,17 @@ class CategoryClassifier {
       'spese casa',
       'ristrutturazione',
       'utenze casa',
-      'acquisto casa'
+      'acquisto casa',
+      'accessori casa',
+      'decorazioni casa',
+      'manutenzione casa',
+      'materiale edile',
+      'attrezzi casa',
+      'impianti casa',
+      'rata mutuo',
+      'spese condominiali',
+      'forniture casa',
+      'artigiani casa'
     ],
     'expense-communication': [
       'telefono',
@@ -183,7 +355,17 @@ class CategoryClassifier {
       'ricarica telefonica',
       'sms',
       'chiamata',
-      'abbonamento telefono'
+      'abbonamento telefono',
+      'canone internet',
+      'gestore mobile',
+      'ricarica sim',
+      'linea fissa',
+      'servizi telefonici',
+      'gestore telefonico',
+      'credito telefono',
+      'pagamento cellulare',
+      'utenze telefoniche',
+      'spese telefonia'
     ],
     'expense-family': [
       'famiglia',
@@ -197,7 +379,17 @@ class CategoryClassifier {
       'mensa scolastica',
       'baby sitter',
       'genitori',
-      'parenti'
+      'parenti',
+      'rette scolastiche',
+      'spese scolastiche',
+      'libri scuola',
+      'vestiti figli',
+      'giocattoli',
+      'spese ludiche',
+      'medico bambini',
+      'attività extrascolastiche',
+      'campi estivi',
+      'corso lingue'
     ],
     'expense-hygiene': [
       'igiene',
@@ -212,7 +404,18 @@ class CategoryClassifier {
       'estetista',
       'cosmetici',
       'crema',
-      'profumo'
+      'profumo',
+      'lozione',
+      'balsamo',
+      'deodorante',
+      'cura corpo',
+      'trattamento viso',
+      'detergente viso',
+      'cosmesi',
+      'cura capelli',
+      'cura mani',
+      'cura piedi',
+      'igiene intima'
     ],
     'expense-investments': [
       'investimento',
@@ -225,7 +428,18 @@ class CategoryClassifier {
       'piano accumulo',
       'cripto',
       'bitcoin',
-      'finanza'
+      'finanza',
+      'cripto monete',
+      'criptovalute',
+      'trading online',
+      'brokeraggio',
+      'fondi comuni',
+      'portafoglio investimenti',
+      'diversificazione',
+      'mercati finanziari',
+      'speculazione',
+      'wallet cripto',
+      'exchange cripto'
     ],
     'expense-work': [
       'lavoro',
@@ -236,7 +450,18 @@ class CategoryClassifier {
       'pranzo lavoro',
       'trasferta',
       'rimborso spese',
-      'formazione lavoro'
+      'formazione lavoro',
+      'attrezzatura lavoro',
+      'coworking',
+      'cancelleria',
+      'software lavoro',
+      'formazione professionale',
+      'consulenza professionale',
+      'quota iscrizione',
+      'servizi professionali',
+      'aggiornamento professionale',
+      'conferenze',
+      'spese aziendali'
     ],
     'expense-eating-out': [
       'ristorante',
@@ -254,7 +479,14 @@ class CategoryClassifier {
       'delivery',
       'just eat',
       'glovo',
-      'deliveroo'
+      'deliveroo',
+      'food court',
+      'steakhouse',
+      'cucina etnica',
+      'cibo da asporto',
+      'dinner out',
+      'colazione fuori',
+      'brunch'
     ],
     'expense-motorcycle': [
       'motore',
@@ -264,7 +496,17 @@ class CategoryClassifier {
       'assicurazione moto',
       'benzina moto',
       'riparazione moto',
-      'garage moto'
+      'garage moto',
+      'accessori moto',
+      'casco',
+      'gomme moto',
+      'pneumatici scooter',
+      'ricambi moto',
+      'noleggio scooter',
+      'lubrificante moto',
+      'tagliando scooter',
+      'revisione moto',
+      'lavaggio scooter'
     ],
     'expense-gifts': [
       'regalo',
@@ -276,7 +518,17 @@ class CategoryClassifier {
       'bomboniera',
       'donazione',
       'pensiero',
-      'cadeau'
+      'cadeau',
+      'sorpresa',
+      'omaggio',
+      'gift card',
+      'cofanetto regalo',
+      'box regalo',
+      'articolo regalo',
+      'spesa regalo',
+      'pensierino',
+      'regalo aziendale',
+      'regalo bambini'
     ],
     'expense-health': [
       'salute',
@@ -292,7 +544,17 @@ class CategoryClassifier {
       'oculista',
       'fisioterapia',
       'psicologo',
-      'esame medico'
+      'esame medico',
+      'parafarmacia',
+      'check up',
+      'diagnostica',
+      'esami sangue',
+      'ricovero',
+      'ambulatorio',
+      'assistenza sanitaria',
+      'clinica',
+      'terapia',
+      'trattamento medico'
     ],
     'expense-betting': [
       'scommessa',
@@ -305,7 +567,18 @@ class CategoryClassifier {
       'schedina',
       'vincita scommessa',
       'slot',
-      'casino'
+      'casino',
+      'scommesse sportive',
+      'poker online',
+      'bingo',
+      'sala giochi',
+      'betting shop',
+      'vlt',
+      'gaming online',
+      'payout gioco',
+      'gioco virtuale',
+      'blackjack',
+      'roulette'
     ],
     'expense-misc': [
       'spesa varia',
@@ -315,7 +588,17 @@ class CategoryClassifier {
       'emergenza',
       'acquisto casuale',
       'spese varie',
-      'spesa imprevista'
+      'spesa imprevista',
+      'altre spese',
+      'diverse',
+      'spese extra',
+      'pagamento vario',
+      'conto vario',
+      'altro pagamento',
+      'spesa non classificata',
+      'spesa generica',
+      'altri costi',
+      'spesa occasionale'
     ],
     'expense-sport': [
       'sport',
@@ -330,7 +613,17 @@ class CategoryClassifier {
       'iscrizione sport',
       'personal trainer',
       'fitness',
-      'yoga'
+      'yoga',
+      'arti marziali',
+      'danza',
+      'pilates',
+      'bicicletta',
+      'sala pesi',
+      'club sportivo',
+      'attrezzatura sportiva',
+      'gara sportiva',
+      'torneo',
+      'camp sportivo'
     ],
     'expense-entertainment': [
       'svago',
@@ -347,7 +640,16 @@ class CategoryClassifier {
       'netflix',
       'prime video',
       'spotify',
-      'abbonamento streaming'
+      'abbonamento streaming',
+      'festival',
+      'serata',
+      'party',
+      'evento musicale',
+      'pay tv',
+      'streaming video',
+      'serata cinema',
+      'biglietto cinema',
+      'intrattenimento'
     ],
     'expense-transport': [
       'trasporto',
@@ -362,7 +664,17 @@ class CategoryClassifier {
       'pullman',
       'biglietto trasporto',
       'abbonamento trasporti',
-      'viaggio urbano'
+      'viaggio urbano',
+      'pass mensile',
+      'biglietto metro',
+      'biglietto autobus',
+      'servizio navetta',
+      'bike sharing',
+      'monopattino sharing',
+      'blablacar',
+      'trasferimento urbano',
+      'ticket trasporto',
+      'mobilità urbana'
     ],
     'expense-technology': [
       'tecnologia',
@@ -379,7 +691,17 @@ class CategoryClassifier {
       'accessorio tech',
       'gadget',
       'app',
-      'acquisto tech'
+      'acquisto tech',
+      'cuffie',
+      'auricolari',
+      'router',
+      'modem',
+      'console',
+      'controller',
+      'smartwatch',
+      'ricarica tech',
+      'riparazione tech',
+      'negozio elettronica'
     ],
     'expense-travel': [
       'viaggio',
@@ -398,9 +720,18 @@ class CategoryClassifier {
       'gita',
       'weekend',
       'booking',
-      'airbnb'
+      'airbnb',
+      'agriturismo',
+      'resort',
+      'pacchetto vacanza',
+      'agenzia viaggi',
+      'autonoleggio',
+      'navetta aeroporto',
+      'transfer hotel',
+      'prenotazione volo',
+      'escursioni guidate'
     ],
-    // Trasferimenti
+// Trasferimenti
     'transfer-withdrawal': [
       'prelievo',
       'atm',
@@ -410,7 +741,16 @@ class CategoryClassifier {
       'withdrawal',
       'sportello',
       'contanti',
-      'prelievo contanti'
+      'prelievo contanti',
+      'prelievo sportello',
+      'cash point',
+      'bancomat estero',
+      'ritiro atm',
+      'prelievo automatico',
+      'operazione bancomat',
+      'ritiro sportello automatico',
+      'prelievo notturno',
+      'cash machine'
     ],
   };
 
@@ -420,16 +760,29 @@ class CategoryClassifier {
     try {
       // 1. Regex match
       final regexCategory = _matchCategoryByRegex(description);
-      print(
-          '[CLASSIFIER] Regex check for "$description": ${regexCategory ?? 'NO MATCH'}');
+      if (kDebugLogs) {
+        print(
+            '[CLASSIFIER] Regex check for "$description": ${regexCategory ?? 'NO MATCH'}');
+      }
       if (regexCategory != null) {
-        print('[CLASSIFIER] Regex matched: $regexCategory');
+        if (kDebugLogs) {
+          print('[CLASSIFIER] Regex matched: $regexCategory');
+        }
         return {regexCategory: 0.9}; // Alta confidenza per keyword match
       }
-      print(
-          '[CLASSIFIER] Regex did not match for "$description". Fallback to Naive Bayes.');
+      if (kDebugLogs) {
+        print(
+            '[CLASSIFIER] Regex did not match for "$description". Fallback to Naive Bayes.');
+      }
       // 2. Fallback: Naive Bayes
       final stats = await IsarService.getAllCategoryStats();
+      if (stats == null || stats.isEmpty) {
+        if (kDebugLogs) {
+          print(
+              '[CLASSIFIER][NAIVE BAYES] Nessuna statistica disponibile, classificazione impossibile.');
+        }
+        return {}; // Nessuna categoria suggerita
+      }
       final words = description.toLowerCase().split(RegExp(r'\W+'));
       final scores = <String, double>{};
       for (final stat in stats) {
@@ -440,7 +793,9 @@ class CategoryClassifier {
         scores[stat.categoryId] = score;
       }
       if (scores.isEmpty) {
-        print('[CLASSIFIER] Naive Bayes found no scores for "$description".');
+        if (kDebugLogs) {
+          print('[CLASSIFIER] Naive Bayes found no scores for "$description".');
+        }
         return {};
       }
       // Normalizza e trova la migliore
@@ -448,11 +803,34 @@ class CategoryClassifier {
       final normalized = scores.map((k, v) => MapEntry(k, v / maxScore));
       final best =
           normalized.entries.reduce((a, b) => a.value > b.value ? a : b);
-      print(
-          '[CLASSIFIER] Naive Bayes best: ${best.key} (score: ${best.value}) for "$description"');
+      // Trova il numero di campioni per la categoria migliore e stampa dettagli per debug
+      final bestStat = stats.firstWhere((s) => s.categoryId == best.key,
+          orElse: () =>
+              CategoryStat(categoryId: best.key, total: 0, wordCounts: {}));
+      if (kDebugLogs) {
+        print(
+            '[CLASSIFIER][DEBUG] Predizione Naive Bayes: categoria migliore = "${best.key}", score = \\${best.value}, campioni per questa categoria = \\${bestStat.total}');
+        print('[CLASSIFIER][DEBUG] Campioni per categoria:');
+        for (final s in stats) {
+          print('  - \\${s.categoryId}: \\${s.total} campioni');
+        }
+      }
+      if (bestStat.total <= 2) {
+        if (kDebugLogs) {
+          print(
+              '[CLASSIFIER][WARNING] Categoria "${best.key}" ha solo \\${bestStat.total} campioni: confidenza forzata a 0.75 (media/gialla)');
+        }
+        return {best.key: 0.75};
+      }
+      if (kDebugLogs) {
+        print(
+            '[CLASSIFIER] Naive Bayes best: ${best.key} (score: ${best.value}) for "$description"');
+      }
       return {best.key: best.value};
     } catch (e, stack) {
-      print('[CLASSIFIER][ERROR] Errore nella classificazione: $e\n$stack');
+      if (kDebugLogs) {
+        print('[CLASSIFIER][ERROR] Errore nella classificazione: $e\n$stack');
+      }
       return {};
     }
   }
@@ -463,11 +841,6 @@ class CategoryClassifier {
     try {
       final words = _tokenize(description);
       final stats = await IsarService.getAllCategoryStats();
-
-      if (stats.isEmpty) {
-        return {'supermercato': 0.5}; // Default
-      }
-
       final scores = <String, double>{};
       final totalSamples = stats.fold<int>(0, (sum, stat) => sum + stat.total);
 
@@ -506,7 +879,9 @@ class CategoryClassifier {
 
       return normalizedScores;
     } catch (e) {
-      print('Errore nella classificazione Naive Bayes: $e');
+      if (kDebugLogs) {
+        print('Errore nella classificazione Naive Bayes: $e');
+      }
       return {'supermercato': 0.5}; // Default
     }
   }
@@ -552,19 +927,36 @@ class CategoryClassifier {
         await IsarService.saveCategoryStat(stat);
       }
 
-      print('Classificatore addestrato con ${samples.length} campioni');
+      if (kDebugLogs) {
+        print('Classificatore addestrato con ${samples.length} campioni');
+        print('[TRAINING][DEBUG] Statistiche per categoria:');
+        for (final stat in categoryStats.values) {
+          print(
+              '  - ${stat.categoryId}: totale=${stat.total}, parole=${stat.wordCounts}');
+        }
+      }
     } catch (e) {
-      print('Errore nell\'addestramento del classificatore: $e');
+      if (kDebugLogs) {
+        print('Errore nell\'addestramento del classificatore: $e');
+      }
     }
   }
 
-  /// Aggiunge un campione di training
-  static Future<void> addTrainingSample(
-      String description, String categoryId) async {
-    print(
-        '[TRAINING] addTrainingSample called with description: "$description", categoryId: "$categoryId"');
+  /// Aggiunge un campione di training SOLO se la correzione è manuale
+  static Future<void> addTrainingSample(String description, String categoryId,
+      {bool manual = false}) async {
+    if (!manual) {
+      // Non salvare campioni se non è una correzione manuale
+      return;
+    }
+    if (kDebugLogs) {
+      print(
+          '[TRAINING] addTrainingSample called with description: "$description", categoryId: "$categoryId"');
+    }
     if (description.isEmpty || categoryId.isEmpty) {
-      print('[TRAINING][ERROR] description o categoryId vuoti, skip.');
+      if (kDebugLogs) {
+        print('[TRAINING][ERROR] description o categoryId vuoti, skip.');
+      }
       return;
     }
     // Verifica se la categoria esiste nel database
@@ -573,12 +965,24 @@ class CategoryClassifier {
     final categories = await db.getCategories();
     final exists = categories.any((c) => c.id == categoryId);
     if (!exists) {
-      print(
-          '[TRAINING][ERROR] Categoria "$categoryId" non trovata nel database, skip.');
+      if (kDebugLogs) {
+        print(
+            '[TRAINING][ERROR] Categoria "$categoryId" non trovata nel database, skip.');
+      }
       return;
     }
-    print('[TRAINING] Categoria trovata, salvo campione.');
+    if (kDebugLogs) {
+      print('[TRAINING] Categoria trovata, salvo campione.');
+    }
     await IsarService.addTrainSample(description, categoryId);
+    // Logga tutti i campioni di training dopo il salvataggio
+    final allSamples = await IsarService.getAllTrainSamples();
+    if (kDebugLogs) {
+      print('[TRAINING][DEBUG] Campioni di training attuali:');
+      for (final s in allSamples) {
+        print('  - "${s.description}" => ${s.categoryId}');
+      }
+    }
     // Riaddestra il classificatore
     await trainClassifier();
   }
@@ -591,8 +995,10 @@ class CategoryClassifier {
       final keywords = entry.value;
       for (final keyword in keywords) {
         if (descriptionLower.contains(keyword)) {
-          print(
-              '[CLASSIFIER][REGEX] Matched "$keyword" for category "$categoryId" in "$description"');
+          if (kDebugLogs) {
+            print(
+                '[CLASSIFIER][REGEX] Matched "$keyword" for category "$categoryId" in "$description"');
+          }
           return categoryId;
         }
       }

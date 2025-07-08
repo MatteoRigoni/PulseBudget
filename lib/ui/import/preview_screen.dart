@@ -25,6 +25,7 @@ class PreviewScreen extends ConsumerStatefulWidget {
 
 class _PreviewScreenState extends ConsumerState<PreviewScreen> {
   final NumberFormat currencyFormat = NumberFormat('###,##0.00', 'it_IT');
+  bool _isImporting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -60,191 +61,241 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
                 t.categoryId != 'transfer-withdrawal')
             .every((t) => t.isCorrected);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Anteprima Importazione'),
-        actions: [
-          // Pulsante toggle seleziona tutto/deseleziona tutto
-          IconButton(
-            onPressed: () {
-              if (allSelected) {
-                notifier.deselectAll();
-              } else {
-                _selectAllWithCategory();
-              }
-            },
-            icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
-            tooltip: allSelected ? 'Deseleziona tutto' : 'Seleziona tutto',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Statistiche come filtri
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: colorScheme.surface,
-            child: Row(
-              children: [
-                _buildFilterCard(
-                  'Alta confidenza',
-                  highConfidence,
-                  Colors.green,
-                  'high',
-                  confidenceFilters.contains('high'),
-                  (isSelected) {
-                    final newFilters = Set<String>.from(confidenceFilters);
-                    if (isSelected) {
-                      newFilters.add('high');
-                    } else {
-                      newFilters.remove('high');
-                    }
-                    filterNotifier.state = newFilters;
-                  },
-                  theme,
-                ),
-                const SizedBox(width: 8),
-                _buildFilterCard(
-                  'Media confidenza',
-                  mediumConfidence,
-                  Colors.orange,
-                  'medium',
-                  confidenceFilters.contains('medium'),
-                  (isSelected) {
-                    final newFilters = Set<String>.from(confidenceFilters);
-                    if (isSelected) {
-                      newFilters.add('medium');
-                    } else {
-                      newFilters.remove('medium');
-                    }
-                    filterNotifier.state = newFilters;
-                  },
-                  theme,
-                ),
-                const SizedBox(width: 8),
-                _buildFilterCard(
-                  'Bassa confidenza',
-                  lowConfidence,
-                  Colors.red,
-                  'low',
-                  confidenceFilters.contains('low'),
-                  (isSelected) {
-                    final newFilters = Set<String>.from(confidenceFilters);
-                    if (isSelected) {
-                      newFilters.add('low');
-                    } else {
-                      newFilters.remove('low');
-                    }
-                    filterNotifier.state = newFilters;
-                  },
-                  theme,
-                ),
-              ],
-            ),
-          ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('Anteprima Import'),
+            actions: [
+              // Pulsante help
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                tooltip: 'Come funziona questa pagina?',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title:
+                          const Text('Come funziona l\'anteprima importazione'),
+                      content: const SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('''In questa pagina puoi:
 
-          // Lista transazioni filtrate
-          Expanded(
-            child: filteredTransactions.isEmpty
-                ? Center(
-                    child: Text(
-                      'Nessuna transazione trovata',
-                      style: TextStyle(color: colorScheme.onSurface),
+- Vedere le transazioni rilevate dal PDF.
+- Ogni transazione viene classificata automaticamente tramite regole (keyword) o tramite un modello AI (Naive Bayes) addestrato sulle tue correzioni manuali.
+- Se la categoria è stata assegnata con sicurezza (verde), puoi importare direttamente. Se la categoria è dubbia (gialla) o non classificata (rossa), puoi correggerla manualmente.
+- Solo le correzioni manuali vengono usate per addestrare l\'AI e migliorare la classificazione futura.
+- Puoi selezionare/deselezionare le transazioni da importare.
+- I colori indicano: verde = alta confidenza, giallo = dubbio (pochi dati), rosso = non classificata.
+
+Più correggi, più il sistema impara!'''),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Chiudi'),
+                        ),
+                      ],
                     ),
-                  )
-                : ListView.builder(
-                    itemCount: filteredTransactions.length,
-                    itemBuilder: (context, index) {
-                      final transaction = filteredTransactions[index];
-                      // Accesso robusto alla categoria
-                      Category category;
-                      if (categories.isNotEmpty &&
-                          transaction.categoryId.isNotEmpty) {
-                        category = categories.firstWhere(
-                          (cat) => cat.id == transaction.categoryId,
-                          orElse: () {
+                  );
+                },
+              ),
+              // Pulsante toggle seleziona tutto/deseleziona tutto
+              IconButton(
+                onPressed: () {
+                  if (allSelected) {
+                    notifier.deselectAll();
+                  } else {
+                    _selectAllWithCategory();
+                  }
+                },
+                icon: Icon(allSelected ? Icons.deselect : Icons.select_all),
+                tooltip: allSelected ? 'Deseleziona tutto' : 'Seleziona tutto',
+              ),
+            ],
+          ),
+          body: Column(
+            children: [
+              // Statistiche come filtri
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: colorScheme.surface,
+                child: Row(
+                  children: [
+                    _buildFilterCard(
+                      'Alta confidenza',
+                      highConfidence,
+                      Colors.green,
+                      'high',
+                      confidenceFilters.contains('high'),
+                      (isSelected) {
+                        final newFilters = Set<String>.from(confidenceFilters);
+                        if (isSelected) {
+                          newFilters.add('high');
+                        } else {
+                          newFilters.remove('high');
+                        }
+                        filterNotifier.state = newFilters;
+                      },
+                      theme,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterCard(
+                      'Media confidenza',
+                      mediumConfidence,
+                      Colors.orange,
+                      'medium',
+                      confidenceFilters.contains('medium'),
+                      (isSelected) {
+                        final newFilters = Set<String>.from(confidenceFilters);
+                        if (isSelected) {
+                          newFilters.add('medium');
+                        } else {
+                          newFilters.remove('medium');
+                        }
+                        filterNotifier.state = newFilters;
+                      },
+                      theme,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterCard(
+                      'Bassa confidenza',
+                      lowConfidence,
+                      Colors.red,
+                      'low',
+                      confidenceFilters.contains('low'),
+                      (isSelected) {
+                        final newFilters = Set<String>.from(confidenceFilters);
+                        if (isSelected) {
+                          newFilters.add('low');
+                        } else {
+                          newFilters.remove('low');
+                        }
+                        filterNotifier.state = newFilters;
+                      },
+                      theme,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Lista transazioni filtrate
+              Expanded(
+                child: filteredTransactions.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nessuna transazione trovata',
+                          style: TextStyle(color: colorScheme.onSurface),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: filteredTransactions.length,
+                        itemBuilder: (context, index) {
+                          final transaction = filteredTransactions[index];
+                          // Accesso robusto alla categoria
+                          Category category;
+                          if (categories.isNotEmpty &&
+                              transaction.categoryId.isNotEmpty) {
+                            category = categories.firstWhere(
+                              (cat) => cat.id == transaction.categoryId,
+                              orElse: () {
+                                print(
+                                    '[PREVIEW][WARNING] Categoria id "${transaction.categoryId}" non trovata tra quelle disponibili! Uso fallback.');
+                                return Category(
+                                  id: '',
+                                  name: 'Non classificata',
+                                  icon: Icons.help_outline,
+                                  colorHex: '#808080',
+                                  type: 'expense',
+                                );
+                              },
+                            );
+                          } else {
                             print(
-                                '[PREVIEW][WARNING] Categoria id "${transaction.categoryId}" non trovata tra quelle disponibili! Uso fallback.');
-                            return Category(
+                                '[PREVIEW][WARNING] Lista categorie vuota o categoryId vuoto per "${transaction.description}". Uso fallback.');
+                            category = Category(
                               id: '',
                               name: 'Non classificata',
                               icon: Icons.help_outline,
                               colorHex: '#808080',
                               type: 'expense',
                             );
-                          },
-                        );
-                      } else {
-                        print(
-                            '[PREVIEW][WARNING] Lista categorie vuota o categoryId vuoto per "${transaction.description}". Uso fallback.');
-                        category = Category(
-                          id: '',
-                          name: 'Non classificata',
-                          icon: Icons.help_outline,
-                          colorHex: '#808080',
-                          type: 'expense',
-                        );
-                      }
-
-                      print(
-                          'DEBUG: TRANSAZIONE PREVIEW -> desc: "${transaction.description}", categoryId: "${transaction.categoryId}", categoryName: "${category.name}", confidence: ${transaction.confidence}, isUnclassified: ${category.id.isEmpty}');
-
-                      final isPrelievo =
-                          transaction.categoryId == 'transfer-withdrawal';
-                      final isSelectable = transaction.categoryId.isNotEmpty &&
-                          !isPrelievo &&
-                          category.id.isNotEmpty;
-
-                      // Se la categoria non è assegnata, forza confidence bassa
-                      final isUnclassified = category.id.isEmpty;
-                      final confidenceToShow =
-                          isUnclassified ? 0.0 : transaction.confidence;
-
-                      // LOG MIRATO: mostra il flusso di classificazione
-                      print(
-                          '[PREVIEW][CLASSIFY] "${transaction.description}" -> categoryId: "${transaction.categoryId}" | categoryName: "${category.name}" | confidence: ${transaction.confidence} | unclassified: ${category.id.isEmpty}');
-
-                      return TransactionPreviewCard(
-                        transaction: isPrelievo
-                            ? transaction.copyWith(isCorrected: false)
-                            : transaction,
-                        category: category,
-                        onCategoryTap: () => _showCategoryPicker(transaction),
-                        onToggleSelection: () {
-                          if (isPrelievo) {
-                            CustomSnackBar.show(
-                              context,
-                              message:
-                                  'I prelievi non sono importabili come movimenti!',
-                              type: SnackBarType.warning,
-                            );
-                          } else if (!isSelectable) {
-                            CustomSnackBar.show(
-                              context,
-                              message:
-                                  'Questa transazione non è selezionabile!',
-                              type: SnackBarType.warning,
-                            );
-                          } else {
-                            notifier.toggleSelection(transaction.id);
                           }
+
+                          print(
+                              'DEBUG: TRANSAZIONE PREVIEW -> desc: "${transaction.description}", categoryId: "${transaction.categoryId}", categoryName: "${category.name}", confidence: ${transaction.confidence}, isUnclassified: ${category.id.isEmpty}');
+
+                          final isPrelievo =
+                              transaction.categoryId == 'transfer-withdrawal';
+                          final isSelectable =
+                              transaction.categoryId.isNotEmpty &&
+                                  !isPrelievo &&
+                                  category.id.isNotEmpty;
+
+                          // Se la categoria non è assegnata, forza confidence bassa
+                          final isUnclassified = category.id.isEmpty;
+                          final confidenceToShow =
+                              isUnclassified ? 0.0 : transaction.confidence;
+
+                          // LOG MIRATO: mostra il flusso di classificazione
+                          print(
+                              '[PREVIEW][CLASSIFY] "${transaction.description}" -> categoryId: "${transaction.categoryId}" | categoryName: "${category.name}" | confidence: ${transaction.confidence} | unclassified: ${category.id.isEmpty}');
+
+                          return TransactionPreviewCard(
+                            transaction: isPrelievo
+                                ? transaction.copyWith(isCorrected: false)
+                                : transaction,
+                            category: category,
+                            onCategoryTap: () =>
+                                _showCategoryPicker(transaction),
+                            onToggleSelection: () {
+                              if (isPrelievo) {
+                                CustomSnackBar.show(
+                                  context,
+                                  message:
+                                      'I prelievi non sono importabili come movimenti!',
+                                  type: SnackBarType.warning,
+                                );
+                              } else if (!isSelectable) {
+                                CustomSnackBar.show(
+                                  context,
+                                  message:
+                                      'Questa transazione non è selezionabile!',
+                                  type: SnackBarType.warning,
+                                );
+                              } else {
+                                notifier.toggleSelection(transaction.id);
+                              }
+                            },
+                            checkboxEnabled: isSelectable,
+                            confidence: confidenceToShow,
+                          );
                         },
-                        checkboxEnabled: isSelectable,
-                        confidence: confidenceToShow,
-                      );
-                    },
-                  ),
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
-      // Pulsante Importa fisso in fondo
-      floatingActionButton: filteredTransactions.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: () => _importTransactions(),
-              icon: const Icon(Icons.download),
-              label: const Text('Importa'),
-            )
-          : null,
+          // Pulsante Importa fisso in fondo
+          floatingActionButton: filteredTransactions.isNotEmpty
+              ? FloatingActionButton.extended(
+                  onPressed: () => _importTransactions(),
+                  icon: const Icon(Icons.download),
+                  label: const Text('Importa'),
+                )
+              : null,
+        ),
+        if (_isImporting)
+          Container(
+            color: Colors.black.withOpacity(0.2),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+      ],
     );
   }
 
@@ -317,6 +368,7 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
   }
 
   Future<void> _importTransactions() async {
+    setState(() => _isImporting = true);
     try {
       print('DEBUG: Inizio importazione transazioni');
 
@@ -412,10 +464,14 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
       // Salva i campioni di training per le correzioni manuali
       print('DEBUG: Inizio salvataggio campioni training');
       for (final transaction in selectedTransactions) {
-        if (transaction.isCorrected) {
-          print('DEBUG: Salvataggio campione per: ${transaction.description}');
+        print(
+            '[TRAINING][CHECK] "${transaction.description}" -> ${transaction.categoryId} | isCorrected: \\${transaction.isCorrected} | isManuallyCorrected: \\${transaction.isManuallyCorrected}');
+        if (transaction.isManuallyCorrected) {
+          print(
+              'DEBUG: Salvataggio campione per: \\${transaction.description}');
           await CategoryClassifier.addTrainingSample(
-              transaction.description, transaction.categoryId);
+              transaction.description, transaction.categoryId,
+              manual: true);
         }
       }
       print('DEBUG: Campioni training salvati');
@@ -472,6 +528,8 @@ class _PreviewScreenState extends ConsumerState<PreviewScreen> {
           type: SnackBarType.error,
         );
       }
+    } finally {
+      if (mounted) setState(() => _isImporting = false);
     }
   }
 

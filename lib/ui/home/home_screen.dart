@@ -182,14 +182,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Analisi estratto in corso...'),
-            ],
-          ),
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
         ),
       );
 
@@ -208,6 +202,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return;
       }
       await notifier.loadFromPdf(pdfFile, paymentType, categories);
+
+      // Step 4.1: Invalida la lista degli estratti conto processati
+      ref.invalidate(PdfImportProviders.allStatementInfosProvider);
 
       // Step 5: Chiudi dialog e mostra anteprima
       if (mounted) {

@@ -39,6 +39,6 @@ class Category {
         'iconCodePoint': icon.codePoint,
         'colorHex': colorHex,
         'type': type,
-        'isSeed': isSeed,
+        'isSeed': isSeed ? 1 : 0, // <-- serializza come int
       };
 }

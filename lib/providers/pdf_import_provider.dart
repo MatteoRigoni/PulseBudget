@@ -90,6 +90,7 @@ class ImportedTransactionsNotifier
           categoryId: categoryId,
           confidence: 1.0, // Confidenza massima per correzioni manuali
           isCorrected: true,
+          isManuallyCorrected: true,
         );
       }
       return transaction;
