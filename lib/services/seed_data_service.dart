@@ -34,7 +34,7 @@ class SeedDataService {
       Category(
         id: 'income-betting',
         name: 'Scommesse',
-        icon: Icons.trending_up,
+        icon: Icons.sports_soccer,
         colorHex: '#FF9800',
         type: 'income',
         isSeed: true,
@@ -68,7 +68,7 @@ class SeedDataService {
       Category(
         id: 'expense-clothing',
         name: 'Abbigliamento',
-        icon: Icons.shopping_bag,
+        icon: Icons.checkroom,
         colorHex: '#795548',
         type: 'expense',
         isSeed: true,
@@ -204,7 +204,7 @@ class SeedDataService {
       Category(
         id: 'expense-betting',
         name: 'Scommesse',
-        icon: Icons.trending_up,
+        icon: Icons.sports_soccer,
         colorHex: '#FF9800',
         type: 'expense',
         isSeed: true,

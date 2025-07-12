@@ -53,7 +53,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: const AppTitleWidget(title: 'Categorie'),
+        // leading: SizedBox.shrink(),
+        title: const Text('Categorie',
+            style: TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: Column(
         children: [

@@ -198,7 +198,15 @@ class BackupService {
                 onTap: () async {
                   Navigator.of(context).pop();
                   try {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) =>
+                          const Center(child: CircularProgressIndicator()),
+                    );
                     await backupService.loadBackupFromFile();
+                    if (context.mounted)
+                      Navigator.of(context).pop(); // Chiude lo spinner
                     if (context.mounted) {
                       // Mostra alert di conferma per riavviare l'app
                       final shouldRestart = await showDialog<bool>(

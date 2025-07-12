@@ -1,6 +1,6 @@
 name: bilancio_me
 description: BilancioMe - Personal finance manager
-version: 1.0.0
+version: 1.0.1
 environment:
   sdk: ">=3.0.0 <4.0.0"
 dependencies:
@@ -42,6 +42,7 @@ dependencies:
   # Nuove dipendenze per importazione PDF
   flutter_chips_input: ^2.0.0
   flutter_speed_dial: ^7.0.0
+  syncfusion_flutter_pdf: ^24.1.45
 dev_dependencies:
   flutter_test:
     sdk: flutter

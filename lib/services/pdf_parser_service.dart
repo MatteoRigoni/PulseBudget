@@ -1,140 +1,206 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import '../model/imported_transaction.dart';
-import '../model/payment_type.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'dart:typed_data';
 
 class PdfParserService {
-  /// Estrae il testo da un file PDF (simulato per ora)
   static Future<String> extractTextFromPdf(File file) async {
-    // Per ora simuliamo l'estrazione del testo
-    // In futuro si può integrare una libreria PDF più stabile
-    return '''
-    INTESTATARIO: MARIO ROSSI
-    CONTO CORRENTE: IT60 X054 2811 1010 0000 0123 456
-    PERIODO: GENNAIO 2024
-    
-    01/01/2024;PRELIEVO CARTA;50.00;EUR
-    01/01/2024;PAGAMENTO CARTA;50.00;EUR
-    02/01/2024;SUPERMERCATO COOP;25.30;EUR
-    03/01/2024;PAGAMENTO BONIFICO;100.00;EUR
-    04/01/2024;RIMBORSO ASSICURAZIONE;-150.00;EUR
-    05/01/2024;PAGAMENTO LUCE;45.20;EUR
-    15/01/2024;STIPENDIO GENNAIO;2500.00;EUR
-    20/01/2024;PAGAMENTO AFFITTO;-800.00;EUR
-    25/01/2024;SPESA FARMACIA;35.50;EUR
-    31/01/2024;PAGAMENTO BOLLETTA GAS;-120.00;EUR
-    ''';
+    try {
+      if (!await file.exists()) {
+        throw const FileSystemException('File does not exist');
+      }
+
+      final Uint8List bytes = await file.readAsBytes();
+      final PdfDocument document = PdfDocument(inputBytes: bytes);
+      final String text = PdfTextExtractor(document).extractText();
+      document.dispose();
+
+      return text;
+    } catch (e, s) {
+      _log('[PDF PARSER][ERROR] Failed to read PDF – using stub. $e', s);
+      return _mockText;
+    }
   }
 
-  /// Seleziona un file PDF
+  /// Opens a file picker that only shows PDF documents.
   static Future<File?> pickPdfFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf'],
+        allowedExtensions: const ['pdf'],
       );
 
-      if (result != null && result.files.single.path != null) {
-        return File(result.files.single.path!);
-      }
-      return null;
-    } catch (e) {
-      print('Errore nella selezione del file: $e');
+      final path = result?.files.single.path;
+      return path == null ? null : File(path);
+    } catch (e, s) {
+      _log('[PDF PARSER][ERROR] File picking failed: $e', s);
       return null;
     }
   }
 
-  /// Estrae l'intestatario dal testo del PDF
+  /// Extracts *account holder* name.
   static String extractAccountHolder(String text) {
-    // Regex per trovare l'intestatario
-    final patterns = [
-      RegExp(r'INTESTATARIO:\s*([^\n\r]+)', caseSensitive: false),
-      RegExp(r'TITOLARE:\s*([^\n\r]+)', caseSensitive: false),
-      RegExp(r'CLIENTE:\s*([^\n\r]+)', caseSensitive: false),
-      RegExp(r'COGNOME E NOME:\s*([^\n\r]+)', caseSensitive: false),
-      RegExp(r'SIG\.\s*([^\n\r]+)', caseSensitive: false),
-    ];
-
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(text);
-      if (match != null) {
-        return match.group(1)!.trim();
-      }
+    for (final regExp in _accountHolderPatterns) {
+      final match = regExp.firstMatch(text);
+      if (match != null) return match.group(1)!.trim();
     }
 
-    // Se non trova pattern specifici, cerca nomi comuni italiani
-    final namePattern = RegExp(r'\b([A-Z][a-z]+ [A-Z][a-z]+)\b');
-    final matches = namePattern.allMatches(text);
-    if (matches.isNotEmpty) {
-      return matches.first.group(1)!;
-    }
-
-    return 'Intestatario non trovato';
+    // Fallback – guess the first capitalised *First Last* sequence.
+    final guess = _nameGuessRegExp.firstMatch(text);
+    return guess?.group(1)?.trim() ?? 'Intestatario non trovato';
   }
 
-  /// Estrae il mese/periodo dall'estratto conto
+  /// Extracts the statement *period* (e.g. "GENNAIO 2024").
   static String extractMonth(String text) {
-    // Regex per trovare il mese/periodo
-    final patterns = [
-      RegExp(r'PERIODO:\s*([^\n\r]+)', caseSensitive: false),
-      RegExp(r'DAL\s+(\d{1,2}/\d{1,2}/\d{4})\s+AL\s+(\d{1,2}/\d{1,2}/\d{4})',
-          caseSensitive: false),
-      RegExp(r'(\d{1,2}/\d{1,2}/\d{4})\s*-\s*(\d{1,2}/\d{1,2}/\d{4})',
-          caseSensitive: false),
-      RegExp(r'([A-Z]+)\s+(\d{4})', caseSensitive: false), // GENNAIO 2024
-    ];
-
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(text);
-      if (match != null) {
-        if (match.groupCount >= 2) {
-          // Se ha due date, prendi la seconda (fine periodo)
-          final dateStr = match.group(2)!;
-          return _formatMonthFromDate(dateStr);
-        } else if (match.groupCount == 1) {
-          final periodStr = match.group(1)!;
-          if (periodStr.contains('/')) {
-            return _formatMonthFromDate(periodStr);
-          } else {
-            return periodStr.trim();
-          }
-        }
+    for (final regExp in _periodPatterns) {
+      final m = regExp.firstMatch(text);
+      if (m != null) {
+        return _normalisePeriod(m);
       }
     }
 
-    // Se non trova pattern specifici, cerca nelle date delle transazioni
-    final datePattern = RegExp(r'(\d{1,2})/(\d{1,2})/(\d{4})');
-    final matches = datePattern.allMatches(text);
-    if (matches.isNotEmpty) {
-      // Prendi l'ultima data trovata
-      final lastMatch = matches.last;
-      final day = int.parse(lastMatch.group(1)!);
-      final month = int.parse(lastMatch.group(2)!);
-      final year = int.parse(lastMatch.group(3)!);
-
-      return _formatMonth(month, year);
+    // Heuristic fallback: use the **last** transaction date and convert.
+    final dates = _dateRegExp.allMatches(text).map((m) => m.group(0)!).toList();
+    if (dates.isNotEmpty) {
+      return _monthYearFromDateString(dates.last);
     }
-
     return 'Periodo non trovato';
   }
 
-  /// Formatta una data in formato mese/anno
-  static String _formatMonthFromDate(String dateStr) {
-    try {
-      final parts = dateStr.split('/');
-      if (parts.length == 3) {
-        final month = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
-        return _formatMonth(month, year);
+  /// Convenience method that bundles holder + period.
+  static Map<String, String> extractStatementInfo(String text) => {
+        'accountHolder': extractAccountHolder(text),
+        'month': extractMonth(text),
+      };
+
+  /// Parses all transactions in [text]. Lines that don’t match the expected
+  /// pattern will be logged and skipped.
+  static List<ImportedTransaction> parseTransactions(String text) {
+    final List<ImportedTransaction> result = [];
+    int totalLines = 0;
+    int skippedLines = 0;
+    print('[PDF PARSER][INFO] Inizio parsing testo PDF...');
+    for (final line in LineSplitter.split(text)) {
+      totalLines++;
+      if (line.trim().isEmpty) continue;
+      final match = _transactionLineRegExp.firstMatch(line);
+      if (match == null) {
+        skippedLines++;
+        print('[PDF PARSER][WARNING] Riga non riconosciuta: "$line"');
+        continue;
       }
-    } catch (e) {
-      print('Errore nel parsing della data: $dateStr');
+      try {
+        final date = _parseDate(match.group(1)!);
+        final description = match.group(2)!.trim();
+        final amount = _parseAmount(match.group(3)!);
+        final currency = match.group(4) ?? 'EUR';
+        result.add(
+          ImportedTransaction(
+            date: date,
+            description: description,
+            amount: amount,
+            currency: currency,
+            categoryId: '',
+            confidence: 0.8,
+          ),
+        );
+      } catch (e, s) {
+        skippedLines++;
+        print('[PDF PARSER][ERROR] Errore parsing riga: "$line" – $e');
+      }
     }
-    return dateStr;
+    print('[PDF PARSER][INFO] Parsing completato. Righe totali: '
+        ' [1m$totalLines [0m, transazioni riconosciute: '
+        ' [1m${result.length} [0m, righe scartate: '
+        ' [1m$skippedLines [0m');
+    return result;
   }
 
-  /// Formatta mese e anno in italiano
+  /// Parses the whole PDF and returns *transactions only*.
+  static Future<List<ImportedTransaction>> parsePdfFile(File file) async {
+    final text = await extractTextFromPdf(file);
+    return parseTransactions(text);
+  }
+
+  /// Parses the whole PDF and returns transactions **and** basic header info.
+  static Future<Map<String, dynamic>> parsePdfFileWithInfo(File file) async {
+    final text = await extractTextFromPdf(file);
+    return {
+      'transactions': parseTransactions(text),
+      ...extractStatementInfo(text),
+    };
+  }
+
+  /* ----------------------------------------------------------------------- */
+  /*  Private helpers                                                        */
+  /* ----------------------------------------------------------------------- */
+
+  /// Regexes – extracted to top level for clarity & easier maintenance.
+  static final List<RegExp> _accountHolderPatterns = [
+    RegExp(r'INTESTATARIO:\s*([^\n\r]+)', caseSensitive: false),
+    RegExp(r'TITOLARE:\s*([^\n\r]+)', caseSensitive: false),
+    RegExp(r'CLIENTE:\s*([^\n\r]+)', caseSensitive: false),
+    RegExp(r'COGNOME E NOME:\s*([^\n\r]+)', caseSensitive: false),
+    RegExp(r'SIG\.\s*([^\n\r]+)', caseSensitive: false),
+  ];
+
+  static final RegExp _nameGuessRegExp =
+      RegExp(r'\b([A-Z][a-zÀ-ÖØ-öø-ÿ]+ [A-Z][a-zÀ-ÖØ-öø-ÿ]+)\b');
+
+  static final List<RegExp> _periodPatterns = [
+    RegExp(r'PERIODO:\s*([^\n\r]+)', caseSensitive: false),
+    RegExp(
+        r'DAL\s+(\d{1,2}[/-]\d{1,2}[/-]\d{4})\s+AL\s+(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+        caseSensitive: false),
+    RegExp(
+        r'(\d{1,2}[/-]\d{1,2}[/-]\d{4})\s*-\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})'),
+    // "GENNAIO 2024" or "Gennaio 2024"
+    RegExp(r'([A-ZÀ-ÖØ-öø-ÿ]+)\s+(\d{4})', caseSensitive: false),
+  ];
+
+  static final RegExp _dateRegExp = RegExp(r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})');
+
+  /// Matches typical CSV‑style row. Captures:
+  ///   1 – date            2 – description   3 – amount   4? – currency
+  static final RegExp _transactionLineRegExp = RegExp(
+    r'^\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\s*[;|\t]\s*(.+?)\s*[;|\t]\s*([+-]?\d[\d.,]*)\s*(?:[;|\t]\s*([A-Z]{3}))?\s*\$',
+    caseSensitive: false,
+  );
+
+  static DateTime _parseDate(String raw) {
+    final normalised = raw.replaceAll('-', '/');
+    final parts = normalised.split('/').map(int.parse).toList();
+    return DateTime(
+        parts[2] < 100 ? parts[2] + 2000 : parts[2], parts[1], parts[0]);
+  }
+
+  static double _parseAmount(String raw) {
+    final cleaned = raw.replaceAll('.', '').replaceAll(',', '.');
+    return double.parse(cleaned);
+  }
+
+  static String _normalisePeriod(RegExpMatch m) {
+    // Pattern with two dates → take *end* date.
+    if (m.groupCount >= 2 && m.group(2)!.contains('/')) {
+      return _monthYearFromDateString(m.group(2)!);
+    }
+    // Pattern "GENNAIO 2024".
+    if (m.groupCount == 2 && !m.group(1)!.contains('/')) {
+      return '${m.group(1)!.toUpperCase()} ${m.group(2)}';
+    }
+    // Single date.
+    return _monthYearFromDateString(m.group(1)!);
+  }
+
+  static String _monthYearFromDateString(String dateStr) {
+    final parts =
+        dateStr.replaceAll('-', '/').split('/').map(int.parse).toList();
+    return _formatMonth(parts[1], parts[2]);
+  }
+
   static String _formatMonth(int month, int year) {
     const months = [
       'GENNAIO',
@@ -150,100 +216,32 @@ class PdfParserService {
       'NOVEMBRE',
       'DICEMBRE'
     ];
-
-    if (month >= 1 && month <= 12) {
-      return '${months[month - 1]} $year';
-    }
-    return '$month/$year';
+    return month >= 1 && month <= 12
+        ? '${months[month - 1]} $year'
+        : '$month/$year';
   }
 
-  /// Estrae informazioni complete dall'estratto conto
-  static Map<String, String> extractStatementInfo(String text) {
-    return {
-      'accountHolder': extractAccountHolder(text),
-      'month': extractMonth(text),
-    };
-  }
+  static void _log(String msg, [StackTrace? s]) =>
+      // ignore: avoid_print
+      s == null ? print(msg) : print('$msg\n$s');
 
-  /// Parsa le transazioni dal testo estratto
-  static List<ImportedTransaction> parseTransactions(String text) {
-    final List<ImportedTransaction> transactions = [];
-    final lines = text.split('\n');
+  /* ----------------------------------------------------------------------- */
+  /*  Stub data – helps running the app without a real PDF                   */
+  /* ----------------------------------------------------------------------- */
+  static const String _mockText = '''
+INTESTATARIO: MARIO ROSSI
+CONTO CORRENTE: IT60 X054 2811 1010 0000 0123 456
+PERIODO: GENNAIO 2024
 
-    // Regex per estrarre data, descrizione, importo
-    final regex = RegExp(r'(\d{2}/\d{2}/\d{4});(.+?);([+-]?\d+\.?\d*);(\w+)');
-
-    for (final line in lines) {
-      if (line.trim().isEmpty) continue;
-      try {
-        final match = regex.firstMatch(line);
-        if (match != null) {
-          final dateStr = match.group(1)!;
-          final description = match.group(2)!.trim();
-          final amountStr = match.group(3)!;
-          final currency = match.group(4)!;
-
-          final dateParts = dateStr.split('/');
-          final date = DateTime(
-            int.parse(dateParts[2]),
-            int.parse(dateParts[1]),
-            int.parse(dateParts[0]),
-          );
-
-          final amount = double.parse(amountStr);
-
-          transactions.add(ImportedTransaction(
-            date: date,
-            description: description,
-            amount: amount,
-            currency: currency,
-            categoryId: '', // Default empty category
-            confidence: 0.8, // Default confidence
-          ));
-        } else {
-          print('[PDF PARSER][WARNING] Riga non conforme: "$line"');
-        }
-      } catch (e, stack) {
-        print(
-            '[PDF PARSER][ERROR] Errore nel parsing della riga: "$line" -> $e\n$stack');
-        // Continua con la prossima riga
-      }
-    }
-
-    return transactions;
-  }
-
-  /// Parsa un file PDF e restituisce le transazioni
-  static Future<List<ImportedTransaction>> parsePdfFile(File file) async {
-    try {
-      final text = await extractTextFromPdf(file);
-      return parseTransactions(text);
-    } catch (e, stack) {
-      print('[PDF PARSER][ERROR] Errore nel parsing del PDF: $e\n$stack');
-      return [];
-    }
-  }
-
-  /// Parsa un file PDF e restituisce transazioni + info estratto conto
-  static Future<Map<String, dynamic>> parsePdfFileWithInfo(File file) async {
-    try {
-      final text = await extractTextFromPdf(file);
-      final transactions = parseTransactions(text);
-      final info = extractStatementInfo(text);
-
-      return {
-        'transactions': transactions,
-        'accountHolder': info['accountHolder']!,
-        'month': info['month']!,
-      };
-    } catch (e, stack) {
-      print(
-          '[PDF PARSER][ERROR] Errore nel parsing del PDF (with info): $e\n$stack');
-      return {
-        'transactions': <ImportedTransaction>[],
-        'accountHolder': 'Errore nel parsing',
-        'month': 'Errore nel parsing',
-      };
-    }
-  }
+01/01/2024;PRELIEVO CARTA;50.00;EUR
+01/01/2024;PAGAMENTO CARTA;50.00;EUR
+02/01/2024;SUPERMERCATO COOP;25,30;EUR
+03/01/2024;PAGAMENTO BONIFICO;100.00;EUR
+04/01/2024;RIMBORSO ASSICURAZIONE;-150.00;EUR
+05/01/2024;PAGAMENTO LUCE;45,20;EUR
+15/01/2024;STIPENDIO GENNAIO;2.500,00;EUR
+20/01/2024;PAGAMENTO AFFITTO;-800.00;EUR
+25/01/2024;SPESA FARMACIA;35.50;EUR
+31/01/2024;PAGAMENTO BOLLETTA GAS;-120.00;EUR
+''';
 }

@@ -30,6 +30,7 @@ import 'dart:io';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../providers/pdf_import_provider.dart';
 import '../widgets/custom_snackbar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -336,6 +337,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.support_agent),
+            tooltip: 'Assistenza',
+            onPressed: () async {
+              final Uri emailLaunchUri = Uri(
+                scheme: 'mailto',
+                path: 'matteo.rigoni2@gmail.com',
+                query: Uri.encodeFull('subject=Segnalazione BilancioMe'),
+              );
+              await launchUrl(emailLaunchUri);
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
             onSelected: (value) async {
@@ -381,16 +394,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     Icon(Icons.backup, size: 20),
                     SizedBox(width: 8),
                     Text('Backup & Ripristino'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'seed',
-                child: Row(
-                  children: [
-                    Icon(Icons.data_array, size: 20),
-                    SizedBox(width: 8),
-                    Text('Dati di Test'),
                   ],
                 ),
               ),
