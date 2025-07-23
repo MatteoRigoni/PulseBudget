@@ -8,11 +8,28 @@ import 'package:restart_app/restart_app.dart';
 import 'database_service.dart';
 import 'cloud_sync_service.dart';
 import '../ui/widgets/custom_snackbar.dart';
+import '../main.dart';
 
 class BackupService {
   final DatabaseService _databaseService;
 
   BackupService(this._databaseService);
+
+  // Utility per chiudere tutti i dialog aperti
+  static void closeAllDialogs(BuildContext context) {
+    while (Navigator.of(context, rootNavigator: true).canPop()) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
+  static void closeAllDialogsGlobal() {
+    final ctx = navigatorKey.currentContext;
+    if (ctx != null) {
+      while (Navigator.of(ctx, rootNavigator: true).canPop()) {
+        Navigator.of(ctx, rootNavigator: true).pop();
+      }
+    }
+  }
 
   // Esporta dati in formato JSON
   Future<String> exportToJson() async {
@@ -117,6 +134,7 @@ class BackupService {
       BuildContext context, BackupService backupService) async {
     return showDialog(
       context: context,
+      useRootNavigator: true,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Backup e Ripristino'),
@@ -128,7 +146,7 @@ class BackupService {
                 title: const Text('Salva backup locale'),
                 subtitle: const Text('Salva i dati in un file JSON'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context, rootNavigator: true).pop();
                   try {
                     final file = await backupService.saveBackupLocally();
                     if (context.mounted) {
@@ -154,7 +172,7 @@ class BackupService {
                 title: const Text('Backup automatico'),
                 subtitle: const Text('Crea backup ogni 30 giorni'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context, rootNavigator: true).pop();
                   final databaseService = DatabaseService();
                   final cloudSyncService = CloudSyncService(databaseService);
 
@@ -165,17 +183,22 @@ class BackupService {
                     // Mostra opzioni per disabilitare
                     final action = await showDialog<String>(
                       context: context,
+                      useRootNavigator: true,
                       builder: (ctx) => AlertDialog(
                         title: const Text('Backup Automatico'),
                         content: const Text(
                             'Il backup automatico è già attivo. Vuoi disabilitarlo?'),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.of(ctx).pop('cancel'),
+                            onPressed: () =>
+                                Navigator.of(ctx, rootNavigator: true)
+                                    .pop('cancel'),
                             child: const Text('Annulla'),
                           ),
                           ElevatedButton(
-                            onPressed: () => Navigator.of(ctx).pop('disable'),
+                            onPressed: () =>
+                                Navigator.of(ctx, rootNavigator: true)
+                                    .pop('disable'),
                             child: const Text('Disabilita'),
                           ),
                         ],
@@ -196,48 +219,78 @@ class BackupService {
                 title: const Text('Carica backup'),
                 subtitle: const Text('Ripristina da file JSON'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context, rootNavigator: true).pop();
                   try {
+                    // Apri spinner con navigator globale
                     showDialog(
-                      context: context,
+                      context: navigatorKey.currentContext!,
                       barrierDismissible: false,
+                      useRootNavigator: true,
                       builder: (context) =>
                           const Center(child: CircularProgressIndicator()),
                     );
-                    await backupService.loadBackupFromFile();
-                    if (context.mounted)
-                      Navigator.of(context).pop(); // Chiude lo spinner
-                    if (context.mounted) {
-                      // Mostra alert di conferma per riavviare l'app
-                      final shouldRestart = await showDialog<bool>(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Backup ripristinato'),
-                            content: const Text(
-                              'Il backup è stato caricato con successo. L\'app deve essere riavviata per applicare le modifiche. Vuoi riavviare ora?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pop(false),
-                                child: const Text('Più tardi'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pop(true),
-                                child: const Text('Riavvia ora'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-
-                      if (shouldRestart == true) {
-                        Restart.restartApp();
-                      }
-                    }
+                    print('[DEBUG] Inizio restore backup...');
+                    await backupService.loadBackupFromFile().timeout(
+                          const Duration(seconds: 30),
+                          onTimeout: () =>
+                              throw Exception('Timeout ripristino backup'),
+                        );
+                    print('[DEBUG] Restore completato, chiudo spinner');
+                    closeAllDialogsGlobal(); // Chiude tutti i dialog globali
+                    // Mostra sempre un AlertDialog di conferma DOPO il restore
+                    await showDialog(
+                      context: navigatorKey.currentContext!,
+                      useRootNavigator: true,
+                      barrierDismissible: false,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Backup ripristinato'),
+                        content: const Text(
+                          'Il backup è stato caricato con successo. Premi OK per riavviare l\'app. Se non si riavvia, chiudi e riapri manualmente.',
+                        ),
+                        actions: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              Navigator.of(context, rootNavigator: true).pop();
+                              try {
+                                print('[DEBUG] Chiamo Restart.restartApp()');
+                                await Restart.restartApp();
+                              } catch (e) {
+                                print('[DEBUG] Restart fallito: $e');
+                                await showDialog(
+                                  context: navigatorKey.currentContext!,
+                                  useRootNavigator: true,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Riavvio non riuscito'),
+                                    content: const Text(
+                                      'Chiudi e riapri manualmente l\'app per completare il ripristino.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context,
+                                                rootNavigator: true)
+                                            .pop(),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                // Dopo l'alert, chiudi tutti i dialog e torna alla root
+                                closeAllDialogsGlobal();
+                                final ctx = navigatorKey.currentContext;
+                                if (ctx != null) {
+                                  Navigator.of(ctx, rootNavigator: true)
+                                      .popUntil((route) => route.isFirst);
+                                }
+                              }
+                            },
+                            child: const Text('OK'),
+                          ),
+                        ],
+                      ),
+                    );
                   } catch (e) {
+                    print('[DEBUG] Errore durante il restore: $e');
+                    closeAllDialogsGlobal(); // Chiude tutti i dialog anche in caso di errore
                     if (context.mounted) {
                       CustomSnackBar.show(
                         context,
@@ -253,7 +306,7 @@ class BackupService {
                 title: const Text('Esporta in CSV'),
                 subtitle: const Text('Per Excel o altri programmi'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(context, rootNavigator: true).pop();
                   try {
                     final file = await backupService.exportToCsv();
                     if (context.mounted) {
@@ -278,7 +331,7 @@ class BackupService {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
               child: const Text('Chiudi'),
             ),
           ],

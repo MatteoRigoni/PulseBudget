@@ -7,12 +7,59 @@ import '../../providers/snapshot_provider.dart';
 import 'new_snapshot_sheet.dart';
 import '../widgets/app_title_widget.dart';
 import '../widgets/custom_snackbar.dart';
+import 'dart:ui';
 
-class PatrimonioScreen extends ConsumerWidget {
+class PatrimonioScreen extends ConsumerStatefulWidget {
   const PatrimonioScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PatrimonioScreen> createState() => _PatrimonioScreenState();
+}
+
+class _PatrimonioScreenState extends ConsumerState<PatrimonioScreen> {
+  bool _showSensitive = false;
+
+  Future<void> _authenticate(BuildContext context) async {
+    final pinController = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sblocca dati patrimonio'),
+        content: TextField(
+          controller: pinController,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Inserisci PIN (1234)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annulla'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (pinController.text == '1234') {
+                Navigator.of(ctx).pop(true);
+              } else {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('PIN errato')),
+                );
+              }
+            },
+            child: const Text('Sblocca'),
+          ),
+        ],
+      ),
+    );
+    if (result == true) {
+      setState(() {
+        _showSensitive = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final entities = ref.watch(entityProvider);
     final selectedEntityId = ref.watch(selectedEntityProvider);
     final snapshotsAsync = ref.watch(snapshotProvider);
@@ -32,7 +79,7 @@ class PatrimonioScreen extends ConsumerWidget {
             children: [
               const Icon(Icons.error, size: 64, color: Colors.red),
               const SizedBox(height: 16),
-              Text('Errore nel caricamento: ${snapshotsAsync.error}'),
+              Text('Errore nel caricamento:  ${snapshotsAsync.error}'),
             ],
           ),
         ),
@@ -69,6 +116,17 @@ class PatrimonioScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          IconButton(
+            icon:
+                Icon(_showSensitive ? Icons.visibility : Icons.visibility_off),
+            tooltip: _showSensitive ? 'Nascondi dati' : 'Mostra dati',
+            onPressed: () {
+              setState(() {
+                _showSensitive =
+                    !_showSensitive; // Cambia direttamente lo stato senza chiedere il PIN
+              });
+            },
+          ),
           PopupMenuButton<String>(
             onSelected: (value) async {
               // TODO: Implementare ordinamento con Firestore
@@ -448,17 +506,127 @@ class PatrimonioScreen extends ConsumerWidget {
                                 CustomSnackBar.show(context,
                                     message: 'Rilevazione eliminata');
                               },
-                              child: SnapshotCard(
-                                snapshot: snapshot,
-                                previous: prev,
-                                onDelete: () async {
-                                  await ref
-                                      .read(snapshotNotifierProvider.notifier)
-                                      .remove(snapshot.id);
-                                  CustomSnackBar.show(context,
-                                      message: 'Rilevazione eliminata');
-                                },
-                              ),
+                              child: _showSensitive
+                                  ? SnapshotCard(
+                                      snapshot: snapshot,
+                                      previous: prev,
+                                      onDelete: () async {
+                                        await ref
+                                            .read(snapshotNotifierProvider
+                                                .notifier)
+                                            .remove(snapshot.id);
+                                        CustomSnackBar.show(
+                                          context,
+                                          message: 'Rilevazione eliminata',
+                                        );
+                                      },
+                                    )
+                                  : Dismissible(
+                                      key: ValueKey(snapshot.id),
+                                      background: Container(
+                                        color: Colors.red,
+                                        alignment: Alignment.centerLeft,
+                                        padding:
+                                            const EdgeInsets.only(left: 24),
+                                        child: const Row(
+                                          children: [
+                                            Icon(Icons.delete,
+                                                color: Colors.white),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Elimina',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      secondaryBackground: Container(
+                                        color: Colors.red,
+                                        alignment: Alignment.centerRight,
+                                        padding:
+                                            const EdgeInsets.only(right: 24),
+                                        child: const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            Text(
+                                              'Elimina',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Icon(Icons.delete,
+                                                color: Colors.white),
+                                          ],
+                                        ),
+                                      ),
+                                      onDismissed: (direction) async {
+                                        await ref
+                                            .read(snapshotNotifierProvider
+                                                .notifier)
+                                            .remove(snapshot.id);
+                                        CustomSnackBar.show(
+                                          context,
+                                          message: 'Rilevazione eliminata',
+                                        );
+                                      },
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: ListTile(
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 12, vertical: 0),
+                                          leading: const Icon(
+                                            Icons
+                                                .account_balance_wallet_outlined,
+                                            color: Colors.blueGrey,
+                                            size: 24,
+                                          ),
+
+                                          // TITOLO: l'importo, offuscato con asterischi + blur SOLO in placeholder
+                                          title: _showSensitive
+                                              ? Text(snapshot.amount.toString())
+                                              : ClipRect(
+                                                  child: BackdropFilter(
+                                                    filter: ImageFilter.blur(
+                                                        sigmaX: 5, sigmaY: 5),
+                                                    child: Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '*****',
+                                                        style: TextStyle(
+                                                          color: Colors
+                                                              .grey.shade400,
+                                                          fontSize: 18,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+
+                                          // SOTTO-TITOLO: la data/etichetta, SEMPRE visibile e inalterata
+                                          subtitle: Text(
+                                            "${snapshot.date.day.toString().padLeft(2, '0')}/${snapshot.date.month.toString().padLeft(2, '0')}/${snapshot.date.year}",
+                                            style: const TextStyle(
+                                                color: Colors.grey),
+                                          ),
+
+                                          // ICONA: visibilità on/off
+                                          trailing: Icon(
+                                            _showSensitive
+                                                ? Icons.visibility
+                                                : Icons.visibility_off,
+                                            color: _showSensitive
+                                                ? null
+                                                : Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                             );
                           },
                         ),

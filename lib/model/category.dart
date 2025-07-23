@@ -361,7 +361,7 @@ class Category {
   Category.fromJson(Map<String, dynamic> json)
       : id = json['id'],
         name = json['name'],
-        icon = _getIconFromCodePoint(json['iconCodePoint']),
+        icon = IconData(json['iconCodePoint'], fontFamily: 'MaterialIcons'),
         colorHex = json['colorHex'],
         type = json['type'],
         isSeed =

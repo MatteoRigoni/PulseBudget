@@ -738,50 +738,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       // Action FABs
       floatingActionButton: Stack(
         children: [
-          // Upload SpeedDial FAB (sinistra)
+          // Upload FAB (sinistra)
           Align(
             alignment: Alignment.bottomLeft,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, bottom: 24),
-              child: SpeedDial(
-                icon: Icons.upload,
-                activeIcon: Icons.close,
+              child: FloatingActionButton(
+                heroTag: "upload",
                 backgroundColor: const Color(0xCC87CEEB),
                 foregroundColor: Colors.white,
-                overlayOpacity: 0.1,
-                spacing: 8,
-                spaceBetweenChildren: 8,
-                childPadding: const EdgeInsets.symmetric(
-                  // ↓ padding verticale del blocco
-                  vertical: 2,
-                ),
-                switchLabelPosition:
-                    true, // <— sposta le label a destra del FAB
-                children: [
-                  SpeedDialChild(
-                    backgroundColor: Colors.transparent,
-                    labelWidget: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFF3EFFF),
-                        borderRadius: BorderRadius.circular(32),
-                      ),
-                      child: const Text(
-                        'Carica da Estratto Conto',
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
-                        style: TextStyle(
-                          color: Color(0xFF5A3FA0),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    onTap: _showImportFlow,
-                  ),
-                ],
+                elevation: 8,
+                onPressed: _showImportFlow,
+                child: const Icon(Icons.upload),
               ),
             ),
           ),
@@ -793,21 +761,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: SizedBox(
                 width: 54,
                 height: 54,
-                child: AnimatedScale(
-                  scale: 1.0,
-                  duration: Duration(milliseconds: 120),
-                  child: FloatingActionButton(
-                    heroTag: "entrata",
-                    backgroundColor: const Color(0xCC7EE787),
-                    foregroundColor: Colors.white,
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    onPressed: () => _showNewTransactionSheet(true),
-                    child: const Icon(Icons.add,
-                        size: 28, color: Colors.white, weight: 800),
+                child: FloatingActionButton(
+                  heroTag: "entrata",
+                  backgroundColor: const Color(0xCC7EE787),
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
                   ),
+                  onPressed: () => _showNewTransactionSheet(true),
+                  child: const Icon(Icons.add,
+                      size: 28, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -820,21 +784,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: SizedBox(
                 width: 54,
                 height: 54,
-                child: AnimatedScale(
-                  scale: 1.0,
-                  duration: Duration(milliseconds: 120),
-                  child: FloatingActionButton(
-                    heroTag: "uscita",
-                    backgroundColor: const Color(0xCCFF8A80),
-                    foregroundColor: Colors.white,
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    onPressed: () => _showNewTransactionSheet(false),
-                    child: const Icon(Icons.remove,
-                        size: 28, color: Colors.white, weight: 800),
+                child: FloatingActionButton(
+                  heroTag: "uscita",
+                  backgroundColor: const Color(0xCCFF8A80),
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
                   ),
+                  onPressed: () => _showNewTransactionSheet(false),
+                  child: const Icon(Icons.remove,
+                      size: 28, color: Colors.white, weight: 800),
                 ),
               ),
             ),
