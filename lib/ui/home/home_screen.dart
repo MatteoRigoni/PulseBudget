@@ -808,7 +808,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ],
       ),
-      floatingActionButtonAnimator: NoScalingAnimation(),
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
