@@ -17,9 +17,6 @@ import '../../providers/period_filter_provider.dart';
 import '../../services/backup_service.dart';
 import '../../services/database_service.dart';
 import '../../services/seed_data_service.dart';
-import '../../services/cloud_sync_service.dart';
-import '../../services/auto_sync_service.dart';
-import '../widgets/sync_status_widget.dart';
 import '../widgets/app_title_widget.dart';
 import '../../providers/recurring_bootstrap_provider.dart';
 import '../import/payment_type_sheet.dart';
@@ -405,8 +402,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Widget stato sincronizzazione
-            const SyncStatusWidget(),
             // PeriodSegmented
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
