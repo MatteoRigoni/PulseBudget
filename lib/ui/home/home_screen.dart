@@ -24,7 +24,6 @@ import '../import/preview_screen.dart';
 import '../../providers/pdf_import_providers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../providers/pdf_import_provider.dart';
 import '../widgets/custom_snackbar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -271,7 +270,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Gestisci stati di loading e error
     if (transactionsAsync.isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: CircularProgressIndicator(
+              strokeWidth: 4,
+              color: HomeScreen.kAppGreen,
+            ),
+          ),
+        ),
       );
     }
 
@@ -796,6 +804,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         ],
       ),
+      floatingActionButtonAnimator: NoScalingAnimation(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
