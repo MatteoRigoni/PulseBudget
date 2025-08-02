@@ -212,7 +212,7 @@ class SeedDataService {
       Category(
         id: 'expense-misc',
         name: 'Spese varie',
-        icon: Icons.more_horiz,
+        icon: Icons.category,
         colorHex: '#9E9E9E',
         type: 'expense',
         isSeed: true,
