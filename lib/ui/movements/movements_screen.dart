@@ -12,7 +12,9 @@ import '../widgets/app_title_widget.dart';
 import '../widgets/custom_snackbar.dart';
 
 class MovementsScreen extends ConsumerStatefulWidget {
-  const MovementsScreen({Key? key}) : super(key: key);
+  const MovementsScreen({Key? key, this.initialCategoryId}) : super(key: key);
+
+  final String? initialCategoryId;
 
   @override
   ConsumerState<MovementsScreen> createState() => _MovementsScreenState();
@@ -33,13 +35,14 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedCategoryId = widget.initialCategoryId;
     _searchSubject.debounceTime(const Duration(milliseconds: 300)).listen((q) {
       setState(() => _query = q);
     });
     // Reset filtri avanzati ogni volta che si entra
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
-        _selectedCategoryId = null;
+        _selectedCategoryId = widget.initialCategoryId;
         _selectedPaymentTypes = {};
         _minAmount = null;
         _maxAmount = null;

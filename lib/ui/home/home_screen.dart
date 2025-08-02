@@ -954,6 +954,14 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
                             fontSize: 15,
                           ),
                         ),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => MovementsScreen(
+                                  initialCategoryId: entry.key.id),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
