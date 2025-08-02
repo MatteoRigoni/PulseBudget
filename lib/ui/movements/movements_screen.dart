@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 import '../../providers/transactions_provider.dart';
 import '../../model/transaction.dart';
 import 'transaction_card.dart';
+import 'new_transaction_sheet.dart';
 import '../../providers/period_filter_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/snapshot_provider.dart';
@@ -239,14 +240,14 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
                     return Dismissible(
                       key: ValueKey(transaction.id),
                       background: Container(
-                        color: Colors.red,
+                        color: Theme.of(context).colorScheme.primary,
                         alignment: Alignment.centerLeft,
                         padding: const EdgeInsets.only(left: 24),
                         child: const Row(
                           children: [
-                            Icon(Icons.delete, color: Colors.white),
+                            Icon(Icons.edit, color: Colors.white),
                             SizedBox(width: 8),
-                            Text('Elimina',
+                            Text('Modifica',
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold)),
@@ -269,12 +270,28 @@ class _MovementsScreenState extends ConsumerState<MovementsScreen> {
                           ],
                         ),
                       ),
+                      confirmDismiss: (direction) async {
+                        if (direction == DismissDirection.startToEnd) {
+                          await showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (context) => NewTransactionSheet(
+                              isIncome: transaction.amount > 0,
+                              transaction: transaction,
+                            ),
+                          );
+                          return false;
+                        }
+                        return true;
+                      },
                       onDismissed: (direction) async {
-                        await ref
-                            .read(transactionsNotifierProvider.notifier)
-                            .delete(transaction.id);
-                        CustomSnackBar.show(context,
-                            message: 'Movimento eliminato');
+                        if (direction == DismissDirection.endToStart) {
+                          await ref
+                              .read(transactionsNotifierProvider.notifier)
+                              .delete(transaction.id);
+                          CustomSnackBar.show(context,
+                              message: 'Movimento eliminato');
+                        }
                       },
                       child: TransactionCard(
                         transaction: transaction,
