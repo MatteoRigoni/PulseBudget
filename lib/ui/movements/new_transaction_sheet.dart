@@ -8,6 +8,7 @@ import '../../providers/transactions_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../model/category.dart';
 import 'package:collection/collection.dart';
+import '../../providers/repository_providers.dart';
 
 class NewTransactionSheet extends ConsumerStatefulWidget {
   final bool isIncome;
@@ -426,8 +427,15 @@ class _NewTransactionSheetState extends ConsumerState<NewTransactionSheet>
                                       },
                                     );
                                     if (selected != null) {
-                                      setState(() =>
-                                          _selectedCategoryId = selected.id);
+                                      setState(
+                                          () => _selectedCategoryId = selected.id);
+                                      final payment = await ref
+                                          .read(databaseServiceProvider)
+                                          .getPaymentTypeForCategory(selected.id);
+                                      if (payment != null) {
+                                        setState(
+                                            () => _selectedPaymentType = payment);
+                                      }
                                       WidgetsBinding.instance
                                           .addPostFrameCallback((_) {
                                         FocusScope.of(context)
