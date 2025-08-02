@@ -7,6 +7,7 @@ import '../model/recurring_rule.dart';
 import '../model/train_sample.dart';
 import '../model/category_stat.dart';
 import '../model/statement_info.dart';
+import '../model/payment_type.dart';
 import 'dart:convert';
 
 class DatabaseService {
@@ -24,7 +25,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -122,6 +123,15 @@ class DatabaseService {
         processedDate TEXT NOT NULL,
         transactionCount INTEGER NOT NULL,
         paymentType TEXT NOT NULL
+      )
+    ''');
+
+    // Tabella corrispondenza categoria -> metodo di pagamento
+    await db.execute('''
+      CREATE TABLE category_payment_types (
+        categoryId TEXT PRIMARY KEY,
+        paymentType TEXT NOT NULL,
+        FOREIGN KEY (categoryId) REFERENCES categories (id)
       )
     ''');
 
@@ -307,6 +317,14 @@ class DatabaseService {
         await db.execute(
             'ALTER TABLE categories ADD COLUMN isSeed INTEGER NOT NULL DEFAULT 0');
       }
+      // Crea tabella corrispondenza categoria -> metodo di pagamento
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS category_payment_types (
+          categoryId TEXT PRIMARY KEY,
+          paymentType TEXT NOT NULL,
+          FOREIGN KEY (categoryId) REFERENCES categories (id)
+        )
+      ''');
     }
   }
 
@@ -326,6 +344,8 @@ class DatabaseService {
   Future<void> insertTransaction(model.Transaction transaction) async {
     final db = await database;
     await db.insert('transactions', transaction.toJson());
+    await _saveCategoryPaymentType(
+        db, transaction.categoryId, transaction.paymentType);
   }
 
   Future<void> updateTransaction(model.Transaction transaction) async {
@@ -336,11 +356,43 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [transaction.id],
     );
+    await _saveCategoryPaymentType(
+        db, transaction.categoryId, transaction.paymentType);
   }
 
   Future<void> deleteTransaction(String id) async {
     final db = await database;
     await db.delete('transactions', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> _saveCategoryPaymentType(
+      Database db, String categoryId, PaymentType paymentType) async {
+    await db.insert(
+      'category_payment_types',
+      {
+        'categoryId': categoryId,
+        'paymentType': paymentType.toString().split('.').last,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<PaymentType?> getPaymentTypeForCategory(String categoryId) async {
+    final db = await database;
+    final result = await db.query(
+      'category_payment_types',
+      where: 'categoryId = ?',
+      whereArgs: [categoryId],
+      limit: 1,
+    );
+    if (result.isEmpty) return null;
+    final typeStr = result.first['paymentType'] as String;
+    try {
+      return PaymentType.values
+          .firstWhere((e) => e.toString() == 'PaymentType.' + typeStr);
+    } catch (_) {
+      return null;
+    }
   }
 
   // Metodi per le categorie
