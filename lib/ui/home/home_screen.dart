@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   String _period = 'Mese';
   int _selectedMonth = 0;
   int _selectedYear = DateTime.now().year;
@@ -48,6 +48,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   late AnimationController _balanceAnimController;
   late Animation<double> _balanceScale;
+  late AnimationController _fabFeedbackController;
+  late Animation<double> _fabFade;
   final NumberFormat currencyFormat = NumberFormat('###,##0.00', 'it_IT');
   late final ScrollController _monthScrollController;
   late List<DateTime> _monthsList;
@@ -85,6 +87,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
     _balanceAnimController.value = 1.0;
 
+    _fabFeedbackController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fabFade = Tween(begin: 1.0, end: 0.3).animate(
+      CurvedAnimation(parent: _fabFeedbackController, curve: Curves.easeOut),
+    );
+    _fabFeedbackController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _fabFeedbackController.reverse();
+      }
+    });
+
     // Esegui il bootstrap delle ricorrenti all'avvio (solo una volta)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasInitialized) {
@@ -97,6 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     _balanceAnimController.dispose();
+    _fabFeedbackController.dispose();
     _monthScrollController.dispose();
     super.dispose();
   }
@@ -110,6 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         isIncome: isIncome,
         onSaved: () {
           _balanceAnimController.forward(from: 0.95);
+          _fabFeedbackController.forward(from: 0.0);
         },
       ),
     );
@@ -411,13 +428,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ],
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
           children: [
-            // PeriodSegmented
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: SegmentedButton<String>(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // PeriodSegmented
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'Mese', label: Text('Mese')),
                   ButtonSegment(value: 'Anno', label: Text('Anno')),
@@ -741,7 +760,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(height: 8),
           ],
         ),
-      ),
+      ],
+    ),
+  ),
       // Action FABs
       floatingActionButton: Stack(
         children: [
@@ -768,17 +789,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: SizedBox(
                 width: 54,
                 height: 54,
-                child: FloatingActionButton(
-                  heroTag: "entrata",
-                  backgroundColor: const Color(0xCC7EE787),
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                child: FadeTransition(
+                  opacity: _fabFade,
+                  child: FloatingActionButton(
+                    heroTag: "entrata",
+                    backgroundColor: const Color(0xCC7EE787),
+                    foregroundColor: Colors.white,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    onPressed: () => _showNewTransactionSheet(true),
+                    child: const Icon(Icons.add,
+                        size: 28, color: Colors.white, weight: 800),
                   ),
-                  onPressed: () => _showNewTransactionSheet(true),
-                  child: const Icon(Icons.add,
-                      size: 28, color: Colors.white, weight: 800),
                 ),
               ),
             ),
@@ -791,17 +815,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: SizedBox(
                 width: 54,
                 height: 54,
-                child: FloatingActionButton(
-                  heroTag: "uscita",
-                  backgroundColor: const Color(0xCCFF8A80),
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                child: FadeTransition(
+                  opacity: _fabFade,
+                  child: FloatingActionButton(
+                    heroTag: "uscita",
+                    backgroundColor: const Color(0xCCFF8A80),
+                    foregroundColor: Colors.white,
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    onPressed: () => _showNewTransactionSheet(false),
+                    child: const Icon(Icons.remove,
+                        size: 28, color: Colors.white, weight: 800),
                   ),
-                  onPressed: () => _showNewTransactionSheet(false),
-                  child: const Icon(Icons.remove,
-                      size: 28, color: Colors.white, weight: 800),
                 ),
               ),
             ),
