@@ -48,8 +48,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   late AnimationController _balanceAnimController;
   late Animation<double> _balanceScale;
+  
   late AnimationController _fabFeedbackController;
   late Animation<double> _fabFade;
+  
   final NumberFormat currencyFormat = NumberFormat('###,##0.00', 'it_IT');
   late final ScrollController _monthScrollController;
   late List<DateTime> _monthsList;
@@ -760,6 +762,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(height: 8),
           ],
         ),
+        if (_successAnimController.isAnimating ||
+            _successAnimController.value > 0)
+          Positioned(
+            bottom: 120,
+            left: 0,
+            right: 0,
+            child: FadeTransition(
+              opacity: _successOpacity,
+              child: ScaleTransition(
+                scale: _successScale,
+                child: const Icon(
+                  Icons.check_circle,
+                  color: HomeScreen.kAppGreen,
+                  size: 40,
+                ),
+              ),
+            ),
+          ),
       ],
     ),
   ),
