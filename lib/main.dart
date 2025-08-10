@@ -50,6 +50,7 @@ Future<void> _initializeDatabase() async {
     final transactionsFuture = databaseService.getTransactions();
     final List<RecurringRule> rules = await rulesFuture;
     final List<Transaction> existingTransactions = await transactionsFuture;
+    
     final now = DateTime.now();
     final newTransactions = generateDueRecurringTransactions(
       rules: rules,

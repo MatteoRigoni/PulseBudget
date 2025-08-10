@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   String _period = 'Mese';
   int _selectedMonth = 0;
   int _selectedYear = DateTime.now().year;
@@ -48,6 +48,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   late AnimationController _balanceAnimController;
   late Animation<double> _balanceScale;
+  late AnimationController _successAnimController;
+  late Animation<double> _successOpacity;
+  late Animation<double> _successScale;
   final NumberFormat currencyFormat = NumberFormat('###,##0.00', 'it_IT');
   late final ScrollController _monthScrollController;
   late List<DateTime> _monthsList;
@@ -85,6 +88,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _balanceScale = _balanceAnimController.drive(Tween(begin: 0.95, end: 1.0));
     _balanceAnimController.value = 1.0;
 
+    _successAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _successOpacity = CurvedAnimation(
+      parent: _successAnimController,
+      curve: Curves.easeOut,
+    );
+    _successScale = Tween(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _successAnimController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+    _successAnimController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _successAnimController.reverse();
+      }
+    });
+
     // Esegui il bootstrap delle ricorrenti all'avvio (solo una volta)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasInitialized) {
@@ -97,6 +120,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     _balanceAnimController.dispose();
+    _successAnimController.dispose();
     _monthScrollController.dispose();
     super.dispose();
   }
@@ -110,6 +134,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         isIncome: isIncome,
         onSaved: () {
           _balanceAnimController.forward(from: 0.95);
+          _successAnimController.forward(from: 0.0);
         },
       ),
     );
@@ -411,13 +436,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ],
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
           children: [
-            // PeriodSegmented
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: SegmentedButton<String>(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // PeriodSegmented
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'Mese', label: Text('Mese')),
                   ButtonSegment(value: 'Anno', label: Text('Anno')),
@@ -741,7 +768,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             const SizedBox(height: 8),
           ],
         ),
-      ),
+        if (_successAnimController.isAnimating ||
+            _successAnimController.value > 0)
+          Positioned(
+            bottom: 120,
+            left: 0,
+            right: 0,
+            child: FadeTransition(
+              opacity: _successOpacity,
+              child: ScaleTransition(
+                scale: _successScale,
+                child: const Icon(
+                  Icons.check_circle,
+                  color: HomeScreen.kAppGreen,
+                  size: 40,
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  ),
       // Action FABs
       floatingActionButton: Stack(
         children: [
