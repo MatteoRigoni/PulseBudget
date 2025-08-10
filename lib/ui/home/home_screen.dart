@@ -48,10 +48,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   late AnimationController _balanceAnimController;
   late Animation<double> _balanceScale;
-  
   late AnimationController _fabFeedbackController;
   late Animation<double> _fabFade;
-  
+
   final NumberFormat currencyFormat = NumberFormat('###,##0.00', 'it_IT');
   late final ScrollController _monthScrollController;
   late List<DateTime> _monthsList;
@@ -60,14 +59,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     final now = DateTime.now();
-    // Genera lista mesi ultimi 3 anni
     _monthsList = List.generate(36, (i) {
       final date = DateTime(now.year, now.month - 35 + i, 1);
       return date;
     });
-    // Trova l'indice del mese corrente
-    final currentIndex = _monthsList
-        .indexWhere((d) => d.year == now.year && d.month == now.month);
+    final currentIndex =
+        _monthsList.indexWhere((d) => d.year == now.year && d.month == now.month);
     if (currentIndex >= 0) {
       _selectedYear = _monthsList[currentIndex].year;
       _selectedMonth = _monthsList[currentIndex].month - 1;
@@ -78,8 +75,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _monthScrollController = ScrollController(
       initialScrollOffset: (currentIndex >= 0 ? currentIndex : 35) * 84.0,
     );
-    print(
-        '[DEBUG] initState: anno=${_selectedYear}, mese=${_selectedMonth + 1}');
     _balanceAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
@@ -102,7 +97,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     });
 
-    // Esegui il bootstrap delle ricorrenti all'avvio (solo una volta)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasInitialized) {
         _hasInitialized = true;
@@ -135,19 +129,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _refreshData() async {
-    // Evita chiamate multiple mentre è già in esecuzione
     if (_isRefreshing) return;
-
     setState(() {
       _isRefreshing = true;
     });
 
     try {
-      // Trigger aggiornamento provider tramite operazione fittizia
       final databaseService = DatabaseService();
       await databaseService.triggerProviderUpdate();
-
-      // Mostra popup di conferma
       if (mounted) {
         CustomSnackBar.show(context, message: 'Dati aggiornati');
       }
@@ -168,33 +157,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Future<void> _showImportFlow() async {
     try {
-      // Step 1: Mostra PaymentTypeSheet
       final shouldContinue = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) => const PaymentTypeSheet(),
       );
-
       if (shouldContinue != true) return;
 
-      // Step 2: Seleziona file PDF
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
         allowMultiple: false,
       );
-
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
       if (file.path == null) {
-        CustomSnackBar.show(context,
-            message: 'Errore nella selezione del file');
+        CustomSnackBar.show(context, message: 'Errore nella selezione del file');
         return;
       }
 
-      // Step 3: Mostra dialog di caricamento
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -203,7 +186,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
       );
 
-      // Step 4: Carica e classifica le transazioni
       final pdfFile = File(file.path!);
       final notifier = ref.read(importedTransactionsProvider.notifier);
       final categories = ref.read(categoriesProvider).value ?? [];
@@ -212,20 +194,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
       if (paymentType == null) {
         if (mounted) {
-          CustomSnackBar.show(context,
-              message: 'Seleziona un tipo di pagamento');
+          CustomSnackBar.show(context, message: 'Seleziona un tipo di pagamento');
         }
         return;
       }
       await notifier.loadFromPdf(pdfFile, paymentType, categories);
-
-      // Step 4.1: Invalida la lista degli estratti conto processati
       ref.invalidate(PdfImportProviders.allStatementInfosProvider);
 
-      // Step 5: Chiudi dialog e mostra anteprima
       if (mounted) {
-        Navigator.of(context).pop(); // Chiudi dialog di caricamento
-
+        Navigator.of(context).pop();
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => const PreviewScreen(),
@@ -234,7 +211,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Chiudi dialog se aperto
+        Navigator.of(context).pop();
         CustomSnackBar.show(context,
             message: 'Errore durante l\'importazione: $e',
             type: SnackBarType.error);
@@ -286,7 +263,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final now = DateTime.now();
     final transactionsAsync = ref.watch(transactionsProvider);
 
-    // Gestisci stati di loading e error
     if (transactionsAsync.isLoading) {
       return const Scaffold(
         body: Center(
@@ -320,19 +296,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final transactions = transactionsAsync.value ?? [];
     final filtered = transactions.where((t) {
       if (_period == 'Mese') {
-        return t.date.month == _selectedMonth + 1 &&
-            t.date.year == _selectedYear;
+        return t.date.month == _selectedMonth + 1 && t.date.year == _selectedYear;
       } else {
         return t.date.year == _selectedYear;
       }
     }).toList();
 
-    final entrate = filtered
-        .where((t) => t.amount > 0)
-        .fold<double>(0, (s, t) => s + t.amount);
-    final uscite = filtered
-        .where((t) => t.amount < 0)
-        .fold<double>(0, (s, t) => s + t.amount);
+    final entrate =
+        filtered.where((t) => t.amount > 0).fold<double>(0, (s, t) => s + t.amount);
+    final uscite =
+        filtered.where((t) => t.amount < 0).fold<double>(0, (s, t) => s + t.amount);
     final saldo = entrate + uscite;
 
     Color byBalance(double value) {
@@ -393,7 +366,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 final seedService = SeedDataService(databaseService);
                 await seedService.seedTestData();
 
-                // Forza l'aggiornamento per mostrare subito i dati di test
                 ref.invalidate(transactionsProvider);
                 ref.invalidate(snapshotProvider);
                 ref.invalidate(recurringRulesProvider);
@@ -437,352 +409,333 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               children: [
                 // PeriodSegmented
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'Mese', label: Text('Mese')),
-                  ButtonSegment(value: 'Anno', label: Text('Anno')),
-                ],
-                selected: <String>{_period},
-                onSelectionChanged: (s) {
-                  setState(() {
-                    _period = s.first;
-                    print('[DEBUG] Cambiato periodo: $_period');
-                  });
+                    segments: const [
+                      ButtonSegment(value: 'Mese', label: Text('Mese')),
+                      ButtonSegment(value: 'Anno', label: Text('Anno')),
+                    ],
+                    selected: <String>{_period},
+                    onSelectionChanged: (s) {
+                      setState(() {
+                        _period = s.first;
+                      });
 
-                  // Se si passa a 'Mese', aggiorna la selezione al mese corrente
-                  if (_period == 'Mese') {
-                    final now = DateTime.now();
-                    _selectedYear = now.year;
-                    _selectedMonth = now.month - 1;
+                      if (_period == 'Mese') {
+                        final now = DateTime.now();
+                        _selectedYear = now.year;
+                        _selectedMonth = now.month - 1;
 
-                    // Scrolla alla fine della lista (mese corrente)
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _monthScrollController.animateTo(
-                        _monthScrollController.position.maxScrollExtent,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _monthScrollController.animateTo(
+                            _monthScrollController.position.maxScrollExtent,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        });
+                      }
+
+                      final periodFilter = ref.read(periodFilterProvider.notifier);
+                      periodFilter.state = PeriodFilter(
+                        period: _period,
+                        month: _selectedMonth + 1,
+                        year: _selectedYear,
                       );
-                    });
-                  }
-
-                  // Aggiorna il filtro globale
-                  final periodFilter = ref.read(periodFilterProvider.notifier);
-                  periodFilter.state = PeriodFilter(
-                    period: _period,
-                    month: _selectedMonth + 1,
-                    year: _selectedYear,
-                  );
-                },
-              ),
-            ),
-            // MonthChipsRow or YearChipsRow
-            SizedBox(
-              height: 56,
-              child: _period == 'Mese'
-                  ? ListView.builder(
-                      controller: _monthScrollController,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      itemExtent: 84,
-                      itemCount: _monthsList.length,
-                      itemBuilder: (context, idx) {
-                        final date = _monthsList[idx];
-                        final isSelected = date.year == _selectedYear &&
-                            date.month == _selectedMonth + 1;
-                        final months = [
-                          'Gennaio',
-                          'Febbraio',
-                          'Marzo',
-                          'Aprile',
-                          'Maggio',
-                          'Giugno',
-                          'Luglio',
-                          'Agosto',
-                          'Settembre',
-                          'Ottobre',
-                          'Novembre',
-                          'Dicembre',
-                        ];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: ChoiceChip(
-                            showCheckmark: false,
-                            label: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Transform.translate(
-                                  offset: const Offset(0, -7),
-                                  child: Column(
-                                    children: [
-                                      SizedBox(
-                                        width: 84,
-                                        child: Padding(
-                                          padding: EdgeInsets.only(top: 0),
-                                          child: Center(
-                                            child: Text(
-                                              months[date.month - 1],
-                                              style:
-                                                  const TextStyle(fontSize: 15),
+                    },
+                  ),
+                ),
+                // MonthChipsRow or YearChipsRow
+                SizedBox(
+                  height: 56,
+                  child: _period == 'Mese'
+                      ? ListView.builder(
+                          controller: _monthScrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          itemExtent: 84,
+                          itemCount: _monthsList.length,
+                          itemBuilder: (context, idx) {
+                            final date = _monthsList[idx];
+                            final isSelected = date.year == _selectedYear &&
+                                date.month == _selectedMonth + 1;
+                            final months = [
+                              'Gennaio',
+                              'Febbraio',
+                              'Marzo',
+                              'Aprile',
+                              'Maggio',
+                              'Giugno',
+                              'Luglio',
+                              'Agosto',
+                              'Settembre',
+                              'Ottobre',
+                              'Novembre',
+                              'Dicembre',
+                            ];
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              child: ChoiceChip(
+                                showCheckmark: false,
+                                label: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Transform.translate(
+                                      offset: const Offset(0, -7),
+                                      child: Column(
+                                        children: [
+                                          SizedBox(
+                                            width: 84,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 0),
+                                              child: Center(
+                                                child: Text(
+                                                  months[date.month - 1],
+                                                  style: const TextStyle(
+                                                      fontSize: 15),
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                          const SizedBox(height: 0),
+                                          Text('${date.year}',
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  color:
+                                                      Colors.grey.shade500)),
+                                        ],
                                       ),
-                                      SizedBox(height: 0),
-                                      Text('${date.year}',
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey.shade500)),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            selected: isSelected,
-                            onSelected: (_) {
-                              setState(() {
-                                _selectedYear = date.year;
-                                _selectedMonth = date.month - 1;
-                                print(
-                                    '[DEBUG] Selezionato: anno=$_selectedYear, mese=${_selectedMonth + 1}');
-                              });
-                              // Aggiorna il filtro globale
-                              final periodFilter =
-                                  ref.read(periodFilterProvider.notifier);
-                              periodFilter.state = PeriodFilter(
-                                period: _period,
-                                month: _selectedMonth + 1,
-                                year: _selectedYear,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    )
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      itemCount: 3,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        final year = DateTime.now().year - (2 - i);
-                        return FilterChip(
-                          label: Text(year.toString()),
-                          selected: year == _selectedYear,
-                          onSelected: (_) {
-                            setState(() {
-                              _selectedYear = year;
-                              print('[DEBUG] Cambiato anno: $_selectedYear');
-                            });
-                            // Aggiorna il filtro globale
-                            final periodFilter =
-                                ref.read(periodFilterProvider.notifier);
-                            periodFilter.state = PeriodFilter(
-                              period: _period,
-                              month: _selectedMonth + 1,
-                              year: _selectedYear,
+                                selected: isSelected,
+                                onSelected: (_) {
+                                  setState(() {
+                                    _selectedYear = date.year;
+                                    _selectedMonth = date.month - 1;
+                                  });
+                                  final periodFilter = ref
+                                      .read(periodFilterProvider.notifier);
+                                  periodFilter.state = PeriodFilter(
+                                    period: _period,
+                                    month: _selectedMonth + 1,
+                                    year: _selectedYear,
+                                  );
+                                },
+                              ),
                             );
                           },
-                        );
-                      },
-                    ),
-            ),
-            const SizedBox(height: 20),
-            // BalanceCard
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: GestureDetector(
-                onTapDown: (_) => _balanceAnimController.reverse(),
-                onTapUp: (_) => _balanceAnimController.forward(),
-                onTapCancel: () => _balanceAnimController.forward(),
-                //onTap: _refreshData,
-                child: ScaleTransition(
-                  scale: _balanceScale,
-                  child: Container(
-                    height: 160,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.black,
-                          Color(0xFF0A174E), // blu scurissimo
-                        ],
-                        stops: [0.0, 1.0],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.18),
-                          blurRadius: 32,
-                          spreadRadius: 2,
-                          offset: Offset(0, 8),
+                        )
+                      : ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          itemCount: 3,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 8),
+                          itemBuilder: (context, i) {
+                            final year =
+                                DateTime.now().year - (2 - i);
+                            return FilterChip(
+                              label: Text(year.toString()),
+                              selected: year == _selectedYear,
+                              onSelected: (_) {
+                                setState(() {
+                                  _selectedYear = year;
+                                });
+                                final periodFilter = ref
+                                    .read(periodFilterProvider.notifier);
+                                periodFilter.state = PeriodFilter(
+                                  period: _period,
+                                  month: _selectedMonth + 1,
+                                  year: _selectedYear,
+                                );
+                              },
+                            );
+                          },
                         ),
-                      ],
-                      border: Border.all(
-                          color: Colors.white.withOpacity(0.08), width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                ),
+                const SizedBox(height: 20),
+                // BalanceCard
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: GestureDetector(
+                    onTapDown: (_) => _balanceAnimController.reverse(),
+                    onTapUp: (_) => _balanceAnimController.forward(),
+                    onTapCancel: () => _balanceAnimController.forward(),
+                    child: ScaleTransition(
+                      scale: _balanceScale,
+                      child: Container(
+                        height: 160,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.black,
+                              Color(0xFF0A174E),
+                            ],
+                            stops: [0.0, 1.0],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.18),
+                              blurRadius: 32,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                          border: Border.all(
+                              color: Colors.white.withOpacity(0.08),
+                              width: 1.2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Chip con solo immagine assets o icona refresh
-                            Container(
-                              width: 38,
-                              height: 32,
-                              margin: const EdgeInsets.only(bottom: 10, top: 0),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              clipBehavior: Clip.hardEdge,
-                              child: _isRefreshing
-                                  ? Container(
-                                      color: Colors.amber.shade700,
-                                      child: const Icon(
-                                        Icons.refresh,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    )
-                                  : Image.asset(
-                                      'assets/chip.jpg',
-                                      fit: BoxFit.cover,
+                            Row(
+                              children: [
+                                // Chip con immagine o icona refresh
+                                Container(
+                                  width: 38,
+                                  height: 32,
+                                  margin: const EdgeInsets.only(
+                                      bottom: 10, top: 0),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  clipBehavior: Clip.hardEdge,
+                                  child: _isRefreshing
+                                      ? Container(
+                                          color: Colors.amber.shade700,
+                                          child: const Icon(
+                                            Icons.refresh,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                        )
+                                      : Image.asset(
+                                          'assets/chip.jpg',
+                                          fit: BoxFit.cover,
+                                        ),
+                                ),
+                                const Spacer(),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text('Saldo',
+                                        style: theme.textTheme.labelLarge
+                                            ?.copyWith(
+                                                color: Colors.white70,
+                                                fontSize: 14)),
+                                    Text(
+                                      '€ ${currencyFormat.format(saldo)}',
+                                      style: theme.textTheme.displayMedium
+                                          ?.copyWith(
+                                              color: saldo > 0
+                                                  ? HomeScreen.kAppGreen
+                                                  : saldo < 0
+                                                      ? HomeScreen.kAppRed
+                                                      : Colors.white,
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.w700),
                                     ),
+                                  ],
+                                ),
+                              ],
                             ),
                             const Spacer(),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('Saldo',
-                                    style: theme.textTheme.labelLarge?.copyWith(
-                                        color: Colors.white70, fontSize: 14)),
-                                Text(
-                                  '€ ${currencyFormat.format(saldo)}',
-                                  style:
-                                      theme.textTheme.displayMedium?.copyWith(
-                                          color: saldo > 0
-                                              ? HomeScreen.kAppGreen
-                                              : saldo < 0
-                                                  ? HomeScreen.kAppRed
-                                                  : Colors.white,
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Entrate
                             Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                // Entrate
+                                Row(
                                   children: [
-                                    Icon(Icons.add,
+                                    const Icon(Icons.add,
                                         color: Colors.white, size: 22),
+                                    const SizedBox(width: 6),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text('Entrate',
+                                            style: theme.textTheme.labelLarge
+                                                ?.copyWith(
+                                                    color: Colors.white,
+                                                    fontSize: 13)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                            '€ ${currencyFormat.format(entrate)}',
+                                            style: theme.textTheme.bodyLarge
+                                                ?.copyWith(
+                                                    color: Colors.white,
+                                                    fontSize: 15)),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(width: 6),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                // Uscite
+                                Row(
                                   children: [
-                                    Text('Entrate',
-                                        style: theme.textTheme.labelLarge
-                                            ?.copyWith(
-                                                color: Colors.white,
-                                                fontSize: 13)),
-                                    const SizedBox(height: 2),
-                                    Text('€ ${currencyFormat.format(entrate)}',
-                                        style: theme.textTheme.bodyLarge
-                                            ?.copyWith(
-                                                color: Colors.white,
-                                                fontSize: 15)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            // Uscite
-                            Row(
-                              children: [
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.remove,
+                                    const Icon(Icons.remove,
                                         color: Colors.white, size: 22),
-                                  ],
-                                ),
-                                const SizedBox(width: 6),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text('Uscite',
-                                        style: theme.textTheme.labelLarge
-                                            ?.copyWith(
-                                                color: Colors.white,
-                                                fontSize: 13)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                        '€ ${currencyFormat.format(uscite.abs())}',
-                                        style: theme.textTheme.bodyLarge
-                                            ?.copyWith(
-                                                color: Colors.white,
-                                                fontSize: 15)),
+                                    const SizedBox(width: 6),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text('Uscite',
+                                            style: theme.textTheme.labelLarge
+                                                ?.copyWith(
+                                                    color: Colors.white,
+                                                    fontSize: 13)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                            '€ ${currencyFormat.format(uscite.abs())}',
+                                            style: theme.textTheme.bodyLarge
+                                                ?.copyWith(
+                                                    color: Colors.white,
+                                                    fontSize: 15)),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // ExpansionTile per categorie peggiori
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                child: _MainCategoriesPanel(
-                  period: _period,
-                  selectedMonth: _selectedMonth,
-                  selectedYear: _selectedYear,
+                const SizedBox(height: 8),
+                // Pannello categorie principali
+                Expanded(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                    child: _MainCategoriesPanel(
+                      period: _period,
+                      selectedMonth: _selectedMonth,
+                      selectedYear: _selectedYear,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+              ],
             ),
-            const SizedBox(height: 8),
           ],
         ),
-        if (_successAnimController.isAnimating ||
-            _successAnimController.value > 0)
-          Positioned(
-            bottom: 120,
-            left: 0,
-            right: 0,
-            child: FadeTransition(
-              opacity: _successOpacity,
-              child: ScaleTransition(
-                scale: _successScale,
-                child: const Icon(
-                  Icons.check_circle,
-                  color: HomeScreen.kAppGreen,
-                  size: 40,
-                ),
-              ),
-            ),
-          ),
-      ],
-    ),
-  ),
+      ),
       // Action FABs
       floatingActionButton: Stack(
         children: [
@@ -801,7 +754,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
-          // Più (entrata) FAB a destra
+          // Più (entrata)
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
@@ -827,7 +780,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
           ),
-          // Meno (uscita) FAB a destra, a sinistra del più
+          // Meno (uscita)
           Align(
             alignment: Alignment.bottomRight,
             child: Padding(
@@ -865,12 +818,12 @@ class _MainCategoriesPanel extends ConsumerStatefulWidget {
   final String period;
   final int selectedMonth;
   final int selectedYear;
-  const _MainCategoriesPanel(
-      {required this.period,
-      required this.selectedMonth,
-      required this.selectedYear,
-      Key? key})
-      : super(key: key);
+  const _MainCategoriesPanel({
+    required this.period,
+    required this.selectedMonth,
+    required this.selectedYear,
+    Key? key,
+  }) : super(key: key);
 
   @override
   ConsumerState<_MainCategoriesPanel> createState() =>
@@ -887,7 +840,6 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
     final categoriesAsync = ref.watch(categoriesProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
 
-    // Gestisci stati di loading e error
     if (transactionsAsync.isLoading || categoriesAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -899,7 +851,7 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
           children: [
             const Icon(Icons.error, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text('Errore nel caricamento'),
+            const Text('Errore nel caricamento'),
           ],
         ),
       );
@@ -915,15 +867,14 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
               t.date.year == widget.selectedYear)
           .toList();
     } else {
-      filtered = transactions
-          .where((t) => t.date.year == widget.selectedYear)
-          .toList();
+      filtered =
+          transactions.where((t) => t.date.year == widget.selectedYear).toList();
     }
-    // Filtra per tipo
+
     final filteredCategories = categories
         .where((c) => c.type == (showExpenses ? 'expense' : 'income'))
         .toList();
-    // Aggrega per categoria
+
     final Map<String, double> totals = {};
     for (final t in filtered) {
       if ((showExpenses && t.amount < 0) || (!showExpenses && t.amount > 0)) {
@@ -934,6 +885,7 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
       for (final c in filteredCategories)
         if (totals.containsKey(c.id)) MapEntry(c, totals[c.id]!)
     ]..sort((a, b) => b.value.abs().compareTo(a.value.abs()));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -942,16 +894,17 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
             Icon(showExpenses ? Icons.trending_down : Icons.trending_up,
                 color: showExpenses ? Colors.red : Colors.green),
             const SizedBox(width: 8),
-            Text(showExpenses ? 'Spese principali' : 'Incassi principali',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              showExpenses ? 'Spese principali' : 'Incassi principali',
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const Spacer(),
             IconButton(
               icon: Icon(
-                  showExpenses
-                      ? Icons.arrow_circle_up
-                      : Icons.arrow_circle_down,
-                  color: Theme.of(context).colorScheme.primary),
+                showExpenses ? Icons.arrow_circle_up : Icons.arrow_circle_down,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               tooltip: showExpenses ? 'Mostra incassi' : 'Mostra spese',
               onPressed: () => setState(() => showExpenses = !showExpenses),
             ),
@@ -967,10 +920,12 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
                   Icon(Icons.emoji_objects,
                       size: 64, color: Colors.amber.shade400),
                   const SizedBox(height: 16),
-                  Text('Nessuna transazione significativa!',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(color: Colors.grey.shade600)),
+                  Text(
+                    'Nessuna transazione significativa!',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             ),
@@ -984,7 +939,10 @@ class _MainCategoriesPanelState extends ConsumerState<_MainCategoriesPanel> {
                   padding: const EdgeInsets.only(bottom: 90),
                   itemCount: sorted.length,
                   separatorBuilder: (context, idx) => Divider(
-                      height: 1, thickness: 0.5, color: Colors.grey.shade300),
+                    height: 1,
+                    thickness: 0.5,
+                    color: Colors.grey.shade300,
+                  ),
                   itemBuilder: (context, idx) {
                     final entry = sorted[idx];
                     return SizedBox(
