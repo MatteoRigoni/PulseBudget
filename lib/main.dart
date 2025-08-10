@@ -24,10 +24,8 @@ void main() async {
 
   print('[DEBUG] ===== APP STARTING =====');
 
-  // Inizializza il database e le categorie default in modo sincrono
-  await _initializeDatabase();
-
-  // Avvia l'app direttamente
+  // Avvia l'app immediatamente; l'inizializzazione del database
+  // verrà eseguita in modo asincrono all'interno dell'app.
   runApp(const ProviderScope(child: PulseBudgetApp()));
 }
 
@@ -36,18 +34,22 @@ Future<void> _initializeDatabase() async {
     print('[DEBUG] Inizializzazione database...');
 
     final databaseService = DatabaseService();
-    final categories = await databaseService.getCategories();
 
-    // Se non ci sono categorie, inserisci quelle default
+    // Recupera categorie e, in parallelo, le altre tabelle necessarie
+    final categories = await databaseService.getCategories();
     if (categories.isEmpty) {
       final seedService = SeedDataService(databaseService);
       await seedService.seedData();
       print('[DEBUG] Categorie default inserite');
     }
 
-    // Bootstrap ricorrenti
-    final rules = await databaseService.getRecurringRules();
-    final existingTransactions = await databaseService.getTransactions();
+    // Esegue le query pesanti in parallelo per ridurre la latenza
+    final results = await Future.wait([
+      databaseService.getRecurringRules(),
+      databaseService.getTransactions(),
+    ]);
+    final rules = results[0] as List;
+    final existingTransactions = results[1] as List;
     final now = DateTime.now();
     final newTransactions = generateDueRecurringTransactions(
       rules: rules,
@@ -91,7 +93,17 @@ class PulseBudgetApp extends StatelessWidget {
         Locale('it', 'IT'),
         Locale('en', 'US'),
       ],
-      home: MainNavigationScreen(key: mainNavKey),
+      home: FutureBuilder(
+        future: _initializeDatabase(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return MainNavigationScreen(key: mainNavKey);
+          }
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        },
+      ),
     );
   }
 }
@@ -112,19 +124,23 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const MovementsScreen(),
-    const PatrimonioScreen(),
-    AnalysisSheet(),
-    const RecurringRulesPage(),
+  // Costruisce le schermate solo quando necessario
+  final List<Widget Function()> _screens = [
+    () => const HomeScreen(),
+    () => const MovementsScreen(),
+    () => const PatrimonioScreen(),
+    () => AnalysisSheet(),
+    () => const RecurringRulesPage(),
   ];
 
   @override
   void initState() {
     super.initState();
-    _checkPatrimonyReminderInApp();
-    _checkAutoSync();
+    // Rimanda le operazioni pesanti al frame successivo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPatrimonyReminderInApp();
+      _checkAutoSync();
+    });
   }
 
   void _goToPatrimonio() {
@@ -184,10 +200,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: _screens[_selectedIndex](),
       bottomNavigationBar: NavigationBar(
         height: 64,
         selectedIndex: _selectedIndex,
