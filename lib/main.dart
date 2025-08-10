@@ -14,6 +14,8 @@ import 'services/cloud_sync_service.dart';
 import 'providers/recurring_bootstrap_provider.dart';
 import 'repository/recurring_scheduler.dart';
 import 'providers/transactions_provider.dart';
+import 'model/recurring_rule.dart';
+import 'model/transaction.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<_MainNavigationScreenState> mainNavKey =
@@ -43,13 +45,12 @@ Future<void> _initializeDatabase() async {
       print('[DEBUG] Categorie default inserite');
     }
 
-    // Esegue le query pesanti in parallelo per ridurre la latenza
-    final results = await Future.wait([
-      databaseService.getRecurringRules(),
-      databaseService.getTransactions(),
-    ]);
-    final rules = results[0] as List;
-    final existingTransactions = results[1] as List;
+    // Avvia in parallelo le query pesanti e attende i risultati tipizzati
+    final rulesFuture = databaseService.getRecurringRules();
+    final transactionsFuture = databaseService.getTransactions();
+    final List<RecurringRule> rules = await rulesFuture;
+    final List<Transaction> existingTransactions = await transactionsFuture;
+    
     final now = DateTime.now();
     final newTransactions = generateDueRecurringTransactions(
       rules: rules,
